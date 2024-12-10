@@ -34,7 +34,7 @@ import dayjs from "@/Utils/dayjs";
 import routes from "@/Utils/request/api";
 import request from "@/Utils/request/request";
 import uploadFile from "@/Utils/request/uploadFile";
-import useQuery from "@/Utils/request/useQuery";
+import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
 import {
   dateQueryString,
   formatDate,
@@ -163,7 +163,7 @@ export default function UserProfile() {
     data: userData,
     loading: isUserLoading,
     refetch: refetchUserData,
-  } = useQuery(routes.currentUser, {
+  } = useTanStackQueryInstead(routes.currentUser, {
     onResponse: (result) => {
       if (!result || !result.res || !result.data) return;
 
@@ -194,12 +194,10 @@ export default function UserProfile() {
     },
   });
 
-  const { data: skillsView, loading: isSkillsLoading } = useQuery(
-    routes.userListSkill,
-    {
+  const { data: skillsView, loading: isSkillsLoading } =
+    useTanStackQueryInstead(routes.userListSkill, {
       pathParams: { username: authUser.username },
-    },
-  );
+    });
 
   const validatePassword = (password: string) => {
     const rules = [

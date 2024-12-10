@@ -23,7 +23,7 @@ import { triggerGoal } from "../../Integrations/Plausible";
 import { NonReadOnlyUsers } from "../../Utils/AuthorizeFor";
 import * as Notification from "../../Utils/Notifications";
 import request from "../../Utils/request/request";
-import useQuery from "../../Utils/request/useQuery";
+import useTanStackQueryInstead from "../../Utils/request/useTanStackQueryInstead";
 import {
   formatDateTime,
   formatName,
@@ -75,20 +75,23 @@ export const PatientHome = (props: {
 
   const initErr: any = {};
   const errors = initErr;
-  const { loading: isLoading, refetch } = useQuery(routes.getPatient, {
-    pathParams: {
-      id,
+  const { loading: isLoading, refetch } = useTanStackQueryInstead(
+    routes.getPatient,
+    {
+      pathParams: {
+        id,
+      },
+      onResponse: ({ res, data }) => {
+        if (res?.ok && data) {
+          setPatientData(data);
+        }
+        triggerGoal("Patient Profile Viewed", {
+          facilityId: facilityId,
+          userId: authUser.id,
+        });
+      },
     },
-    onResponse: ({ res, data }) => {
-      if (res?.ok && data) {
-        setPatientData(data);
-      }
-      triggerGoal("Patient Profile Viewed", {
-        facilityId: facilityId,
-        userId: authUser.id,
-      });
-    },
-  });
+  );
 
   const handleAssignedVolunteer = async () => {
     const { res, data } = await request(routes.patchPatient, {
@@ -117,7 +120,7 @@ export const PatientHome = (props: {
   };
 
   const consultation = patientData?.last_consultation;
-  const skillsQuery = useQuery(routes.userListSkill, {
+  const skillsQuery = useTanStackQueryInstead(routes.userListSkill, {
     pathParams: {
       username: consultation?.treating_physician_object?.username ?? "",
     },

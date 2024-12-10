@@ -19,7 +19,7 @@ import AuthorizeFor from "@/Utils/AuthorizeFor";
 import * as Notification from "@/Utils/Notifications";
 import routes from "@/Utils/request/api";
 import request from "@/Utils/request/request";
-import useQuery from "@/Utils/request/useQuery";
+import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
 
 interface IProps {
   username: string;
@@ -40,7 +40,7 @@ export default ({ show, setShow, username }: IProps) => {
     data: skills,
     loading: skillsLoading,
     refetch: refetchUserSkills,
-  } = useQuery(routes.userListSkill, {
+  } = useTanStackQueryInstead(routes.userListSkill, {
     pathParams: { username },
   });
 

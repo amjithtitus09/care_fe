@@ -36,7 +36,7 @@ import * as Notification from "@/Utils/Notifications";
 import { showUserDelete } from "@/Utils/permissions";
 import routes from "@/Utils/request/api";
 import request from "@/Utils/request/request";
-import useQuery from "@/Utils/request/useQuery";
+import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
 import {
   classNames,
   formatDisplayName,
@@ -82,16 +82,19 @@ export default function ManageUsers() {
   const extremeSmallScreenBreakpoint = 320;
   const isExtremeSmallScreen = width <= extremeSmallScreenBreakpoint;
 
-  const { data: homeFacilityData } = useQuery(routes.getAnyFacility, {
-    pathParams: { id: qParams.home_facility },
-    prefetch: !!qParams.home_facility && qParams.home_facility !== "NONE",
-  });
+  const { data: homeFacilityData } = useTanStackQueryInstead(
+    routes.getAnyFacility,
+    {
+      pathParams: { id: qParams.home_facility },
+      prefetch: !!qParams.home_facility && qParams.home_facility !== "NONE",
+    },
+  );
 
   const {
     data: userListData,
     loading: userListLoading,
     refetch: refetchUserList,
-  } = useQuery(routes.userList, {
+  } = useTanStackQueryInstead(routes.userList, {
     query: {
       limit: resultsPerPage.toString(),
       offset: (
@@ -118,13 +121,11 @@ export default function ManageUsers() {
     }
   }, [advancedFilter, qParams]);
 
-  const { data: districtData, loading: districtDataLoading } = useQuery(
-    routes.getDistrict,
-    {
+  const { data: districtData, loading: districtDataLoading } =
+    useTanStackQueryInstead(routes.getDistrict, {
       prefetch: !!qParams.district,
       pathParams: { id: qParams.district },
-    },
-  );
+    });
 
   const addUser = (
     <ButtonV2
@@ -678,7 +679,7 @@ export function UserFacilities(props: { user: any }) {
     data: userFacilities,
     loading: userFacilitiesLoading,
     refetch: refetchUserFacilities,
-  } = useQuery(routes.userListFacility, {
+  } = useTanStackQueryInstead(routes.userListFacility, {
     pathParams: { username },
     query: {
       limit,

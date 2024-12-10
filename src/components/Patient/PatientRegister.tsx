@@ -76,7 +76,7 @@ import * as Notification from "@/Utils/Notifications";
 import { usePubSub } from "@/Utils/pubsubContext";
 import routes from "@/Utils/request/api";
 import request from "@/Utils/request/request";
-import useQuery from "@/Utils/request/useQuery";
+import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
 import {
   compareBy,
   dateQueryString,
@@ -394,7 +394,7 @@ export const PatientRegister = (props: PatientRegisterProps) => {
     [id],
   );
 
-  useQuery(routes.hcx.policies.list, {
+  useTanStackQueryInstead(routes.hcx.policies.list, {
     query: {
       patient: id,
     },
@@ -408,7 +408,7 @@ export const PatientRegister = (props: PatientRegisterProps) => {
     },
   });
 
-  const { data: stateData, loading: isStateLoading } = useQuery(
+  const { data: stateData, loading: isStateLoading } = useTanStackQueryInstead(
     routes.statesList,
   );
 
@@ -421,10 +421,13 @@ export const PatientRegister = (props: PatientRegisterProps) => {
     [dispatch, fetchData],
   );
 
-  const { data: facilityObject } = useQuery(routes.getAnyFacility, {
-    pathParams: { id: facilityId },
-    prefetch: !!facilityId,
-  });
+  const { data: facilityObject } = useTanStackQueryInstead(
+    routes.getAnyFacility,
+    {
+      pathParams: { id: facilityId },
+      prefetch: !!facilityId,
+    },
+  );
 
   const validateForm = (form: any) => {
     const errors: Partial<Record<keyof any, FieldError>> = {};

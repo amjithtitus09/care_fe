@@ -19,7 +19,7 @@ import { RESULTS_PER_PAGE_LIMIT } from "@/common/constants";
 import * as Notification from "@/Utils/Notifications";
 import routes from "@/Utils/request/api";
 import request from "@/Utils/request/request";
-import useQuery from "@/Utils/request/useQuery";
+import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
 import { formatName, isUserOnline, relativeTime } from "@/Utils/utils";
 
 export default function FacilityUsers(props: any) {
@@ -45,18 +45,21 @@ export default function FacilityUsers(props: any) {
 
   const limit = RESULTS_PER_PAGE_LIMIT;
 
-  const { data: facilityData } = useQuery(routes.getAnyFacility, {
-    pathParams: {
-      id: facilityId,
+  const { data: facilityData } = useTanStackQueryInstead(
+    routes.getAnyFacility,
+    {
+      pathParams: {
+        id: facilityId,
+      },
+      prefetch: facilityId !== undefined,
     },
-    prefetch: facilityId !== undefined,
-  });
+  );
 
   const {
     data: facilityUserData,
     refetch: facilityUserFetch,
     loading: isLoading,
-  } = useQuery(routes.getFacilityUsers, {
+  } = useTanStackQueryInstead(routes.getFacilityUsers, {
     query: { offset: offset, limit: limit },
     pathParams: { facility_id: facilityId },
     prefetch: facilityId !== undefined,
