@@ -160,13 +160,13 @@ const AssetCreate = (props: AssetProps) => {
   };
 
   useEffect(() => {
-    if (generalDetailsVisible) {
-      setCurrentSection("General Details");
-    } else if (warrantyDetailsVisible) {
-      setCurrentSection("Warranty Details");
-    } else if (serviceDetailsVisible) {
-      setCurrentSection("Service Details");
-    }
+    setCurrentSection((currentSection) => {
+      let sectionNow = currentSection;
+      if (serviceDetailsVisible) sectionNow = "Service Details";
+      if (warrantyDetailsVisible) sectionNow = "Warranty Details";
+      if (generalDetailsVisible) sectionNow = "General Details";
+      return sectionNow;
+    });
   }, [generalDetailsVisible, warrantyDetailsVisible, serviceDetailsVisible]);
 
   const locationsQuery = useQuery(routes.listFacilityAssetLocation, {
