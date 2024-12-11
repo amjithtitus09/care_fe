@@ -1,11 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
 import request from "@/Utils/request/request";
-import {
-  QueryRoute,
-  RequestOptions,
-  RequestResult,
-} from "@/Utils/request/types";
+import { QueryRoute, RequestOptions } from "@/Utils/request/types";
 
 import { mergeRequestOptions } from "./utils";
 
@@ -15,38 +12,43 @@ export interface QueryOptions<TData> extends RequestOptions<TData> {
   key?: string;
 }
 
+/**
+ * @deprecated use `useQuery` from `@tanstack/react-query` instead.
+ */
 export default function useTanStackQueryInstead<TData>(
   route: QueryRoute<TData>,
   options?: QueryOptions<TData>,
 ) {
-  const { data: response, isLoading } = useQuery({
+  const [overrides, setOverrides] = useState<QueryOptions<TData>>();
+  const {
+    data: response,
+    isLoading,
+    refetch,
+  } = useQuery({
     queryKey: [route.path, options?.pathParams, options?.query],
-    queryFn: async () => {
-      return await request(route, options);
+    queryFn: async ({ signal }) => {
+      const resolvedOptions = overrides
+        ? mergeRequestOptions(options || {}, overrides)
+        : options;
+
+      return await request(route, { ...resolvedOptions, signal });
     },
     enabled: options?.prefetch ?? true,
     refetchOnWindowFocus: options?.refetchOnWindowFocus,
   });
-
-  /**
-   * Refetch function that applies new options and fetches fresh data.
-   */
-  const refetch = async (
-    overrides?: QueryOptions<TData>,
-  ): Promise<RequestResult<TData>> => {
-    const resolvedOptions = overrides
-      ? mergeRequestOptions(options || {}, overrides)
-      : options;
-
-    // Directly fetch data with resolved options
-    return await request(route, resolvedOptions);
-  };
 
   return {
     data: response?.data,
     loading: isLoading,
     error: response?.error,
     res: response?.res,
-    refetch,
+    /**
+     * Refetch function that applies new options and fetches fresh data.
+     */
+    refetch: async (overrides?: QueryOptions<TData>) => {
+      setOverrides(overrides);
+      await refetch();
+      return response!;
+    },
   };
 }

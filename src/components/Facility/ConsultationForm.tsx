@@ -1,7 +1,7 @@
 import careConfig from "@careConfig";
 import { t } from "i18next";
 import { navigate } from "raviger";
-import { LegacyRef, createRef, useEffect, useRef, useState } from "react";
+import { LegacyRef, createRef, useEffect, useState } from "react";
 
 import CareIcon from "@/CAREUI/icons/CareIcon";
 
@@ -235,7 +235,6 @@ type Props = {
 
 export const ConsultationForm = ({ facilityId, patientId, id }: Props) => {
   const { goBack } = useAppHistory();
-  const submitController = useRef<AbortController>();
   const [state, dispatch] = useAutoSaveReducer<FormDetails>(
     consultationFormReducer,
     initialState,
@@ -744,7 +743,6 @@ export const ConsultationForm = ({ facilityId, patientId, id }: Props) => {
         {
           pathParams: id ? { id } : undefined,
           body: data,
-          controllerRef: submitController,
         },
       );
 
