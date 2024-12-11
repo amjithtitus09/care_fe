@@ -3,7 +3,7 @@ import ViewInvestigations from "@/components/Facility/Investigations/ViewInvesti
 import { PatientModel } from "@/components/Patient/models";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 export interface InvestigationSessionType {
   session_external_id: string;

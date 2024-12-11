@@ -11,7 +11,7 @@ import useFilters from "@/hooks/useFilters";
 
 import { NonReadOnlyUsers } from "@/Utils/AuthorizeFor";
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 import { PatientProps } from ".";
 import { PatientModel } from "../models";

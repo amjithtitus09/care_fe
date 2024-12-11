@@ -15,7 +15,7 @@ import { GENDER_TYPES } from "@/common/constants";
 
 import { NonReadOnlyUsers } from "@/Utils/AuthorizeFor";
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { formatName, formatPatientAge } from "@/Utils/utils";
 
 import { PatientProps } from ".";

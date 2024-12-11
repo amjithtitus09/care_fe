@@ -16,7 +16,7 @@ import {
 } from "@/common/constants";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 export default function UserFilter(props: any) {
   const { filter, onChange, closeFilter, removeFilters } = props;

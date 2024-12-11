@@ -2,7 +2,7 @@ import AutocompleteFormField from "@/components/Form/FormFields/Autocomplete";
 import AutocompleteMultiSelectFormField from "@/components/Form/FormFields/AutocompleteMultiselect";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 interface LocationSelectProps {
   name: string;

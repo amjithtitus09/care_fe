@@ -14,7 +14,7 @@ import { triggerGoal } from "@/Integrations/Plausible";
 import { PLUGIN_Component } from "@/PluginEngine";
 import { Warn } from "@/Utils/Notifications";
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import {
   classNames,
   formatName,

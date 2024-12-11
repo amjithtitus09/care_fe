@@ -35,7 +35,7 @@ import { checkIfValidIP } from "@/common/validation";
 import { Error, Success } from "@/Utils/Notifications";
 import routes from "@/Utils/request/api";
 import request from "@/Utils/request/request";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { getCameraConfig, makeAccessKey } from "@/Utils/transformUtils";
 import { classNames, compareBy } from "@/Utils/utils";
 

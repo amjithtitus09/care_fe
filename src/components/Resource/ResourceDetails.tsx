@@ -9,7 +9,7 @@ import Page from "@/components/Common/Page";
 import CommentSection from "@/components/Resource/ResourceCommentSection";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { classNames, formatDateTime, formatName } from "@/Utils/utils";
 
 export default function ResourceDetails(props: { id: string }) {

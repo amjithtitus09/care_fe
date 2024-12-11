@@ -25,7 +25,7 @@ import {
 } from "@/common/constants";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { formatDateTime, formatName, formatPatientAge } from "@/Utils/utils";
 
 export default function ShiftDetails(props: { id: string }) {

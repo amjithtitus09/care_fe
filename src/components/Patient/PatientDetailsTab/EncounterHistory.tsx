@@ -12,7 +12,7 @@ import useAuthUser from "@/hooks/useAuthUser";
 
 import { triggerGoal } from "@/Integrations/Plausible";
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 import { PatientProps } from ".";
 import { PatientModel } from "../models";

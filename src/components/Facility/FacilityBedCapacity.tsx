@@ -12,7 +12,7 @@ import { BED_TYPES } from "@/common/constants";
 
 import { NonReadOnlyUsers } from "@/Utils/AuthorizeFor";
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 export const FacilityBedCapacity = (props: any) => {
   const { t } = useTranslation();

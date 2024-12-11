@@ -11,7 +11,7 @@ import Page from "@/components/Common/Page";
 import { DailyRoundsModel } from "@/components/Patient/models";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { formatDateTime } from "@/Utils/utils";
 
 export const DailyRoundListDetails = (props: any) => {

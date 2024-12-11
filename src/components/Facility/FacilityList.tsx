@@ -19,7 +19,7 @@ import useFilters from "@/hooks/useFilters";
 import { FACILITY_TYPES } from "@/common/constants";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 import SearchByMultipleFields from "../Common/SearchByMultipleFields";
 

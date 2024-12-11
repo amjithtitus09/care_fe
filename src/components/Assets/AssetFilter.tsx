@@ -15,7 +15,7 @@ import { SelectFormField } from "@/components/Form/FormFields/SelectFormField";
 import { FieldChangeEvent } from "@/components/Form/FormFields/Utils";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { dateQueryString } from "@/Utils/utils";
 
 const getDate = (value: any) =>

@@ -16,7 +16,7 @@ import { RESOURCE_FILTER_ORDER } from "@/common/constants";
 import { RESOURCE_CHOICES } from "@/common/constants";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { dateQueryString } from "@/Utils/utils";
 
 const getDate = (value: any) =>

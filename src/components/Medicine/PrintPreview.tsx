@@ -10,7 +10,7 @@ import MedicineRoutes from "@/components/Medicine/routes";
 import { useSlugs } from "@/hooks/useSlug";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import {
   classNames,
   formatDate,

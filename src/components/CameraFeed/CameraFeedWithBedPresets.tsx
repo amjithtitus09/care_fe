@@ -6,7 +6,7 @@ import { CameraPresetDropdown } from "@/components/CameraFeed/CameraPresetSelect
 import { CameraPreset, FeedRoutes } from "@/components/CameraFeed/routes";
 import useOperateCamera from "@/components/CameraFeed/useOperateCamera";
 
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { classNames } from "@/Utils/utils";
 
 interface Props {

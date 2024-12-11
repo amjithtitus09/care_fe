@@ -21,7 +21,7 @@ import * as Notification from "@/Utils/Notifications";
 import routes from "@/Utils/request/api";
 import request from "@/Utils/request/request";
 import { PaginatedResponse } from "@/Utils/request/types";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { formatPatientAge } from "@/Utils/utils";
 
 const RESULT_PER_PAGE = 14;

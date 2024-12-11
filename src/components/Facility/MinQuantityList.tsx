@@ -8,7 +8,7 @@ import { MinQuantityRequiredModal } from "@/components/Facility/MinQuantityRequi
 
 import { NonReadOnlyUsers } from "@/Utils/AuthorizeFor";
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 export default function MinQuantityList(props: any) {
   const { facilityId }: any = props;

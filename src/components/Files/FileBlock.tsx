@@ -11,7 +11,7 @@ import { FileManagerResult } from "@/hooks/useFileManager";
 import { FILE_EXTENSIONS } from "@/common/constants";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 export interface FileBlockProps {
   file: FileUploadModel;

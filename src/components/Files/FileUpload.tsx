@@ -19,7 +19,7 @@ import { RESULTS_PER_PAGE_LIMIT } from "@/common/constants";
 
 import { NonReadOnlyUsers } from "@/Utils/AuthorizeFor";
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 export const LinearProgressWithLabel = (props: { value: number }) => {
   return (

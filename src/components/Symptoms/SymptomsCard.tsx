@@ -8,7 +8,7 @@ import { groupAndSortSymptoms } from "@/components/Symptoms/utils";
 
 import useSlug from "@/hooks/useSlug";
 
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 // TODO: switch to list from events as timeline view instead once filter event by event type name is done
 const EncounterSymptomsCard = () => {

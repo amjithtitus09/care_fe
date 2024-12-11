@@ -1,7 +1,7 @@
 import { SHIFTING_FILTER_ORDER } from "@/common/constants";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 export function useFacilityQuery(facilityId: string | undefined) {
   return useTanStackQueryInstead(routes.getAnyFacility, {

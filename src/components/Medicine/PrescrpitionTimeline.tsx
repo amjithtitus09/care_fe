@@ -21,7 +21,7 @@ import useSlug from "@/hooks/useSlug";
 
 import dayjs from "@/Utils/dayjs";
 import request from "@/Utils/request/request";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { classNames, formatDateTime, formatTime } from "@/Utils/utils";
 
 interface MedicineAdministeredEvent extends TimelineEvent<"administered"> {

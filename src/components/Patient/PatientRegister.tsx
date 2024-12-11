@@ -76,7 +76,7 @@ import * as Notification from "@/Utils/Notifications";
 import { usePubSub } from "@/Utils/pubsubContext";
 import routes from "@/Utils/request/api";
 import request from "@/Utils/request/request";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import {
   compareBy,
   dateQueryString,

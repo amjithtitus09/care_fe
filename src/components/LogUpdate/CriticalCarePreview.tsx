@@ -17,7 +17,7 @@ import PainChart from "@/components/LogUpdate/components/PainChart";
 import { DailyRoundsModel } from "@/components/Patient/models";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import {
   ValueDescription,
   classNames,

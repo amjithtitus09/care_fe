@@ -19,7 +19,7 @@ import { RESPIRATORY_SUPPORT } from "@/common/constants";
 
 import { Warn } from "@/Utils/Notifications";
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { rangeValueDescription } from "@/Utils/utils";
 
 const RespiratorySupport = ({ log, onChange }: LogUpdateSectionProps) => {

@@ -8,7 +8,7 @@ import Pagination from "@/components/Common/Pagination";
 import { PaginatedResponse, QueryRoute } from "@/Utils/request/types";
 import useTanStackQueryInstead, {
   QueryOptions,
-} from "@/Utils/request/useTanStackQueryInstead";
+} from "@/Utils/request/useQuery";
 import { classNames } from "@/Utils/utils";
 
 const DEFAULT_PER_PAGE_LIMIT = 14;

@@ -3,7 +3,7 @@ import Loading from "@/components/Common/Loading";
 import Page from "@/components/Common/Page";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { classNames, formatDateTime, humanizeStrings } from "@/Utils/utils";
 
 interface ISamplePreviewProps {

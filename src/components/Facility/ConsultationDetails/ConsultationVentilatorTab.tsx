@@ -7,7 +7,7 @@ import VentilatorTable from "@/components/Facility/Consultations/VentilatorTable
 import useFilters from "@/hooks/useFilters";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 export const ConsultationVentilatorTab = (props: ConsultationTabProps) => {
   const { consultationId } = props;

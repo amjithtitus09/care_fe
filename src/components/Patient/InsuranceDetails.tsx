@@ -4,7 +4,7 @@ import { HCXPolicyModel } from "@/components/HCX/models";
 import { InsuranceDetailsCard } from "@/components/Patient/InsuranceDetailsCard";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 interface IProps {
   facilityId: string;

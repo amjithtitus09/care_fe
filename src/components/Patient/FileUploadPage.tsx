@@ -2,7 +2,7 @@ import Page from "@/components/Common/Page";
 import { FileUpload } from "@/components/Files/FileUpload";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 export default function FileUploadPage(props: {
   facilityId: string;

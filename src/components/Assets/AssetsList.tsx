@@ -27,7 +27,7 @@ import * as Notification from "@/Utils/Notifications";
 import { parseQueryParams } from "@/Utils/primitives";
 import routes from "@/Utils/request/api";
 import request from "@/Utils/request/request";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 const AssetsList = () => {
   const { t } = useTranslation();

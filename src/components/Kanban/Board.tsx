@@ -11,7 +11,7 @@ import CareIcon from "@/CAREUI/icons/CareIcon";
 
 import request from "@/Utils/request/request";
 import { QueryRoute } from "@/Utils/request/types";
-import { QueryOptions } from "@/Utils/request/useTanStackQueryInstead";
+import { QueryOptions } from "@/Utils/request/useQuery";
 
 interface KanbanBoardProps<T extends { id: string }> {
   title?: ReactNode;

@@ -8,7 +8,7 @@ import Loading from "@/components/Common/Loading";
 import { MedibaseMedicine, Prescription } from "@/components/Medicine/models";
 import MedicineRoutes from "@/components/Medicine/routes";
 
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { humanizeStrings } from "@/Utils/utils";
 
 interface MedicinePrescriptionSummaryProps {

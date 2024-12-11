@@ -35,7 +35,7 @@ import { triggerGoal } from "@/Integrations/Plausible";
 import { CameraFeedPermittedUserTypes } from "@/Utils/permissions";
 import routes from "@/Utils/request/api";
 import request from "@/Utils/request/request";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import {
   formatDateTime,
   humanizeStrings,

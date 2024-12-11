@@ -39,7 +39,7 @@ import {
 import { parseOptionId } from "@/common/utils";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { formatPatientAge, humanizeStrings } from "@/Utils/utils";
 
 const DischargedPatientsList = ({

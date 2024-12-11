@@ -20,7 +20,7 @@ import {
 
 import * as Notify from "@/Utils/Notifications";
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { parsePhoneNumber } from "@/Utils/utils";
 
 const parsePhoneNumberForFilterParam = (phoneNumber: string) => {

@@ -19,7 +19,7 @@ import useSlug from "@/hooks/useSlug";
 
 import { Success } from "@/Utils/Notifications";
 import request from "@/Utils/request/request";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { Writable } from "@/Utils/types";
 import { classNames, dateQueryString } from "@/Utils/utils";
 

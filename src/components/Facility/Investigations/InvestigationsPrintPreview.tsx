@@ -7,7 +7,7 @@ import PrintPreview from "@/CAREUI/misc/PrintPreview";
 import { Investigation } from "@/components/Facility/Investigations/Reports/types";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 const Loading = lazy(() => import("@/components/Common/Loading"));
 

@@ -38,7 +38,7 @@ import { AdvancedFilterButton } from "../../CAREUI/interactive/FiltersSlideover"
 import { triggerGoal } from "../../Integrations/Plausible";
 import * as Notification from "../../Utils/Notifications";
 import request from "../../Utils/request/request";
-import useTanStackQueryInstead from "../../Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "../../Utils/request/useQuery";
 import {
   formatPatientAge,
   humanizeStrings,

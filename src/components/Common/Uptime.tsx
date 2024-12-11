@@ -8,7 +8,7 @@ import {
 
 import dayjs from "@/Utils/dayjs";
 import { PaginatedResponse, QueryRoute } from "@/Utils/request/types";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { classNames } from "@/Utils/utils";
 
 const STATUS_COLORS = {

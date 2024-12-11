@@ -8,7 +8,7 @@ import { InvestigationResponse } from "@/components/Facility/Investigations/Repo
 
 import dayjs from "@/Utils/dayjs";
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 export default function ViewInvestigationSuggestions(props: {
   consultationId: string;

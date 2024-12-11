@@ -11,7 +11,7 @@ import AutocompleteFormField from "@/components/Form/FormFields/Autocomplete";
 
 import { Error } from "@/Utils/Notifications";
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { classNames, mergeQueryOptions } from "@/Utils/utils";
 
 interface AddICD11DiagnosisProps {

@@ -9,7 +9,7 @@ import useDebounce from "@/hooks/useDebounce";
 
 import { Error } from "@/Utils/Notifications";
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { mergeQueryOptions } from "@/Utils/utils";
 
 export const FILTER_BY_DIAGNOSES_KEYS = [

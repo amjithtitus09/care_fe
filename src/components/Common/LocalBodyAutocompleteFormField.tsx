@@ -3,7 +3,7 @@ import AutocompleteFormField from "@/components/Form/FormFields/Autocomplete";
 import { FormFieldBaseProps } from "@/components/Form/FormFields/Utils";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 type Props = FormFieldBaseProps<LocalBodyModel["id"]> & {
   placeholder?: string;

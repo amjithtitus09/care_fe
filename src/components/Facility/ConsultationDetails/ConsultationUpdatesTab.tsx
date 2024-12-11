@@ -36,7 +36,7 @@ import { EVENTS_SORT_OPTIONS } from "@/common/constants";
 
 import routes from "@/Utils/request/api";
 import { QueryParams } from "@/Utils/request/types";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import {
   formatDate,
   formatDateTime,

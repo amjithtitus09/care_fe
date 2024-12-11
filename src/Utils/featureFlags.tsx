@@ -5,7 +5,7 @@ import { FacilityModel } from "@/components/Facility/models";
 import useAuthUser from "@/hooks/useAuthUser";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 export type FeatureFlag = "SCRIBE_ENABLED"; // "HCX_ENABLED" | "ABDM_ENABLED" |
 

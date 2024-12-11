@@ -13,7 +13,7 @@ import MedicineRoutes from "@/components/Medicine/routes";
 
 import useSlug from "@/hooks/useSlug";
 
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { formatDateTime } from "@/Utils/utils";
 
 interface Props {

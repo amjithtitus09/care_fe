@@ -14,7 +14,7 @@ import { GENDER_TYPES, TEST_TYPE_CHOICES } from "@/common/constants";
 
 import { DetailRoute } from "@/Routers/types";
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { formatDateTime, formatPatientAge } from "@/Utils/utils";
 
 export const SampleDetails = ({ id }: DetailRoute) => {

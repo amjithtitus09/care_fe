@@ -26,7 +26,7 @@ import useFilters from "@/hooks/useFilters";
 import useFullscreen from "@/hooks/useFullscreen";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 const SORT_OPTIONS: SortOption[] = [
   { isAscending: true, value: "bed__name" },

@@ -1,7 +1,7 @@
 import { NotificationData } from "@/components/Notifications/models";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 export default function ShowPushNotification({ id }: { id: string }) {
   useTanStackQueryInstead(routes.getNotificationData, {

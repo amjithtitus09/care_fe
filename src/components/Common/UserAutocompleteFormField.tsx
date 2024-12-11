@@ -11,7 +11,7 @@ import { UserBareMinimum } from "@/components/Users/models";
 import { UserRole } from "@/common/constants";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import {
   classNames,
   formatName,

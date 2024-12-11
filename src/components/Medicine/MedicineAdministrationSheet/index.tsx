@@ -17,7 +17,7 @@ import useBreakpoints from "@/hooks/useBreakpoints";
 import useRangePagination from "@/hooks/useRangePagination";
 import useSlug from "@/hooks/useSlug";
 
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 interface Props {
   readonly?: boolean;

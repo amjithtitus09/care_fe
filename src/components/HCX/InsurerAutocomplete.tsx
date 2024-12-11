@@ -8,7 +8,7 @@ import {
 } from "@/components/Form/FormFields/Utils";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { mergeQueryOptions } from "@/Utils/utils";
 
 export type InsurerOptionModel = {

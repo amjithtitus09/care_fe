@@ -16,7 +16,7 @@ import { PatientModel } from "@/components/Patient/models";
 import { GENDER_TYPES } from "@/common/constants";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 import { formatDate, formatDateTime, formatPatientAge } from "@/Utils/utils";
 
 export interface ITreatmentSummaryProps {

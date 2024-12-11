@@ -12,7 +12,7 @@ import Page from "@/components/Common/Page";
 import useBreakpoints from "@/hooks/useBreakpoints";
 
 import routes from "@/Utils/request/api";
-import useTanStackQueryInstead from "@/Utils/request/useTanStackQueryInstead";
+import useTanStackQueryInstead from "@/Utils/request/useQuery";
 
 export default function CentralLiveMonitoring(props: { facilityId: string }) {
   const [isFullscreen, setFullscreen] = useState(false);
