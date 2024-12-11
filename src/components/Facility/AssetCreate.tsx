@@ -1,6 +1,6 @@
 import { IDetectedBarcode, Scanner } from "@yudiel/react-qr-scanner";
 import { navigate } from "raviger";
-import {
+import React, {
   LegacyRef,
   MutableRefObject,
   RefObject,
@@ -107,8 +107,6 @@ const AssetCreate = (props: AssetProps) => {
   const { t } = useTranslation();
   const { facilityId, assetId } = props;
 
-  let assetClassInitial: AssetClass;
-
   const [state, dispatch] = useReducer(asset_create_reducer, initialState);
   const [name, setName] = useState("");
   const [asset_class, setAssetClass] = useState<AssetClass>();
@@ -162,13 +160,13 @@ const AssetCreate = (props: AssetProps) => {
   };
 
   useEffect(() => {
-    setCurrentSection((currentSection) => {
-      let sectionNow = currentSection;
-      if (serviceDetailsVisible) sectionNow = "Service Details";
-      if (warrantyDetailsVisible) sectionNow = "Warranty Details";
-      if (generalDetailsVisible) sectionNow = "General Details";
-      return sectionNow;
-    });
+    if (generalDetailsVisible) {
+      setCurrentSection("General Details");
+    } else if (warrantyDetailsVisible) {
+      setCurrentSection("Warranty Details");
+    } else if (serviceDetailsVisible) {
+      setCurrentSection("Service Details");
+    }
   }, [generalDetailsVisible, warrantyDetailsVisible, serviceDetailsVisible]);
 
   const locationsQuery = useQuery(routes.listFacilityAssetLocation, {
@@ -195,11 +193,18 @@ const AssetCreate = (props: AssetProps) => {
       setSupportPhone(asset.support_phone);
       setQrCodeId(asset.qr_code_id);
       setManufacturer(asset.manufacturer);
-      asset.warranty_amc_end_of_validity &&
+
+      if (asset.warranty_amc_end_of_validity) {
         setWarrantyAmcEndOfValidity(asset.warranty_amc_end_of_validity);
-      asset.last_service?.serviced_on &&
-        setLastServicedOn(asset.last_service?.serviced_on);
-      asset.last_service?.note && setNotes(asset.last_service?.note);
+      }
+
+      if (asset.last_service?.serviced_on) {
+        setLastServicedOn(asset.last_service.serviced_on);
+      }
+
+      if (asset.last_service?.note) {
+        setNotes(asset.last_service.note);
+      }
     },
   });
 
@@ -231,7 +236,7 @@ const AssetCreate = (props: AssetProps) => {
             errors[field] = t("field_required");
             invalidForm = true;
           }
-          // eslint-disable-next-line no-case-declarations
+
           const checkTollFree = support_phone.startsWith("1800");
           const supportPhoneSimple = support_phone
             .replace(/[^0-9]/g, "")
@@ -283,7 +288,7 @@ const AssetCreate = (props: AssetProps) => {
     setName("");
     setDescription("");
     setLocation("");
-    setAssetClass(assetClassInitial);
+    setAssetClass(undefined);
     setIsWorking(undefined);
     setNotWorkingReason("");
     setSerialNumber("");
@@ -491,6 +496,7 @@ const AssetCreate = (props: AssetProps) => {
               const section = sections[sectionTitle as AssetFormSection];
               return (
                 <button
+                  key={sectionTitle}
                   className={`flex w-full items-center justify-start gap-3 rounded-l-lg px-5 py-3 font-medium ${
                     isCurrent ? "bg-white text-primary-500" : "bg-transparent"
                   } transition-all duration-100 ease-in hover:bg-white hover:tracking-wider`}
