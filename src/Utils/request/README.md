@@ -46,20 +46,58 @@ function SearchMedicines() {
 
 // When you need response status/error handling
 function FacilityDetails({ id }: { id: string }) {
-  const { data: response } = useQuery({
-    queryKey: ['facility', id],
+  const { data, isLoading } = useQuery({
+    queryKey: ["facility", id],
     queryFn: api.query(routes.getFacility, {
-      pathParams: { id }
+      pathParams: { id },
+      silent: true
     })
   });
 
-  if (response?.res && !response.res.ok) {
-    navigate('/not-found');
-  }
-
-  return <div>{response?.data?.name}</div>;
+  if (isLoading) return <Loading />;
+  return <div>{data?.name}</div>;
 }
+
+### api.query
+
+`api.query` is our wrapper around fetch that works seamlessly with TanStack Query. It:
+- Handles response parsing (JSON, text, blobs)
+- Constructs proper error objects
+- Integrates with our global error handling
+
+```typescript
+interface QueryOptions {
+  pathParams?: Record<string, string>;  // URL parameters
+  queryParams?: Record<string, string>; // Query string parameters
+  silent?: boolean;                     // Suppress error notifications
+}
+
+// Basic usage
+useQuery({
+  queryKey: ["users"],
+  queryFn: api.query(routes.users.list)
+});
+
+// With parameters
+useQuery({
+  queryKey: ["user", id],
+  queryFn: api.query(routes.users.get, {
+    pathParams: { id },
+    queryParams: { include: "details" },
+    silent: true  // Optional: suppress error notifications
+  })
+});
 ```
+
+### Error Handling
+
+All API errors are now handled globally. Common scenarios like:
+- 404 responses -> Redirects to /not-found
+- Session expiry -> Redirects to /session-expired
+- Bad requests (400/406) -> Shows error notification
+are automatically handled.
+
+Use the `silent: true` option to suppress error notifications for specific queries.
 
 ## Migration Guide & Reference
 
@@ -87,12 +125,9 @@ function LegacyComponent({ id }) {
 function ModernComponent({ id }) {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: [UserRoutes.getUser.path, id],
-    queryFn: async () => {
-      const response = await request(UserRoutes.getUser, {
-        pathParams: { id }
-      });
-      return response.data;
-    },
+    queryFn: api.query(UserRoutes.getUser, {
+      pathParams: { id }
+    }),
     enabled: true,
     refetchOnWindowFocus: false
   });
@@ -127,7 +162,7 @@ useTanStackQueryInstead(route, { prefetch: shouldFetch })
 // Modern
 useQuery({
   queryKey: [route.path],
-  queryFn: async () => (await request(route)).data,
+  queryFn: api.query(route),
   enabled: shouldFetch
 })
 ```
@@ -143,13 +178,10 @@ useTanStackQueryInstead(route, {
 // Modern
 useQuery({
   queryKey: [route.path, id, filter],
-  queryFn: async () => {
-    const response = await request(route, {
-      pathParams: { id },
-      query: { filter }
-    });
-    return response.data;
-  }
+  queryFn: api.query(route, {
+    pathParams: { id },
+    queryParams: { filter }
+  })
 })
 ```
 
@@ -162,12 +194,10 @@ if (res?.status === 403) handleForbidden();
 // Modern
 useQuery({
   queryKey: [route.path],
-  queryFn: async () => {
-    const response = await request(route);
-    if (response.res.status === 403) handleForbidden();
-    return response.data;
-  },
-  onError: (error) => handleError(error)
+  queryFn: api.query(route, {
+    silent: true // Optional: suppress error notifications
+  })
+  // Error handling is now done globally
 })
 ```
 
