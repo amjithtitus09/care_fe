@@ -4,33 +4,60 @@ CARE now uses TanStack Query (formerly React Query) as its data fetching solutio
 
 ## Using TanStack Query (Recommended for new code)
 
-For new API integrations, we recommend using TanStack Query directly:
+For new API integrations, we recommend using TanStack Query with `api.query`:
 
 ```tsx
 import { useQuery } from "@tanstack/react-query";
-import request from "@/Utils/request/request";
-import FooRoutes from "@foo/routes";
+import api from "@/Utils/request/api-request";
 
-export default function FooDetails({ id }) {
-  const { data, isLoading, error } = useQuery({
-    queryKey: [FooRoutes.getFoo.path, id],
-    queryFn: async () => {
-      const response = await request(FooRoutes.getFoo, {
-        pathParams: { id }
-      });
-      return response.data;
-    }
+export default function UserProfile() {
+  const { data, isLoading } = useQuery({
+    queryKey: [routes.users.current.path],
+    queryFn: api.query(routes.users.current)
   });
 
   if (isLoading) return <Loading />;
-  if (error) return <Error error={error} />;
+  return <div>{data?.name}</div>;
+}
 
-  return (
-    <div>
-      <span>{data.id}</span>
-      <span>{data.name}</span>
-    </div>
-  );
+// With path parameters
+function PatientDetails({ id }: { id: string }) {
+  const { data } = useQuery({
+    queryKey: ['patient', id],
+    queryFn: api.query(routes.patient.get, {
+      pathParams: { id }
+    })
+  });
+
+  return <div>{data?.name}</div>;
+}
+
+// With query parameters
+function SearchMedicines() {
+  const { data } = useQuery({
+    queryKey: ['medicines', 'paracetamol'],
+    queryFn: api.query(routes.medicine.search, {
+      queryParams: { search: 'paracetamol' }
+    })
+  });
+
+  return <MedicinesList medicines={data?.results} />;
+}
+
+// When you need response status/error handling
+function FacilityDetails({ id }: { id: string }) {
+  const { data: response } = useQuery({
+    queryKey: ['facility', id],
+    queryFn: api.query(routes.getFacility, {
+      pathParams: { id }
+    })
+  });
+
+  if (response?.res && !response.res.ok) {
+    navigate('/not-found');
+  }
+
+  return <div>{response?.data?.name}</div>;
 }
 ```
 
