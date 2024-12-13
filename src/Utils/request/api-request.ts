@@ -19,6 +19,10 @@ async function queryRequest<TData, TBody>(
   };
 
   if (options?.body) {
+    requestOptions.headers = {
+      ...requestOptions.headers,
+      'Content-Type': 'application/json'
+    };
     requestOptions.body = JSON.stringify(options.body);
   }
 
