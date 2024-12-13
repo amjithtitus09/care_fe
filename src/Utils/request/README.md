@@ -4,16 +4,16 @@ CARE now uses TanStack Query (formerly React Query) as its data fetching solutio
 
 ## Using TanStack Query (Recommended for new code)
 
-For new API integrations, we recommend using TanStack Query with `api.query`:
+For new API integrations, we recommend using TanStack Query with `query` utility function. This is a wrapper around `fetch` that works seamlessly with TanStack Query. It handles response parsing, error handling, setting headers, and more.
 
 ```tsx
 import { useQuery } from "@tanstack/react-query";
-import api from "@/Utils/request/api-request";
+import query from "@/Utils/request/query";
 
 export default function UserProfile() {
   const { data, isLoading } = useQuery({
     queryKey: [routes.users.current.path],
-    queryFn: api.query(routes.users.current)
+    queryFn: query(routes.users.current)
   });
 
   if (isLoading) return <Loading />;
@@ -24,7 +24,7 @@ export default function UserProfile() {
 function PatientDetails({ id }: { id: string }) {
   const { data } = useQuery({
     queryKey: ['patient', id],
-    queryFn: api.query(routes.patient.get, {
+    queryFn: query(routes.patient.get, {
       pathParams: { id }
     })
   });
@@ -36,7 +36,7 @@ function PatientDetails({ id }: { id: string }) {
 function SearchMedicines() {
   const { data } = useQuery({
     queryKey: ['medicines', 'paracetamol'],
-    queryFn: api.query(routes.medicine.search, {
+    queryFn: query(routes.medicine.search, {
       queryParams: { search: 'paracetamol' }
     })
   });
@@ -48,7 +48,7 @@ function SearchMedicines() {
 function FacilityDetails({ id }: { id: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ["facility", id],
-    queryFn: api.query(routes.getFacility, {
+    queryFn: query(routes.getFacility, {
       pathParams: { id },
       silent: true
     })
@@ -58,12 +58,13 @@ function FacilityDetails({ id }: { id: string }) {
   return <div>{data?.name}</div>;
 }
 
-### api.query
+### query
 
-`api.query` is our wrapper around fetch that works seamlessly with TanStack Query. It:
-- Handles response parsing (JSON, text, blobs)
-- Constructs proper error objects
-- Integrates with our global error handling
+`query` is our wrapper around fetch that works seamlessly with TanStack Query. It:
+- Handles response parsing (JSON, text, blobs).
+- Constructs proper error objects.
+- Sets the headers appropriately.
+- Integrates with our global error handling.
 
 ```typescript
 interface QueryOptions {
@@ -75,13 +76,13 @@ interface QueryOptions {
 // Basic usage
 useQuery({
   queryKey: ["users"],
-  queryFn: api.query(routes.users.list)
+  queryFn: query(routes.users.list)
 });
 
 // With parameters
 useQuery({
   queryKey: ["user", id],
-  queryFn: api.query(routes.users.get, {
+  queryFn: query(routes.users.get, {
     pathParams: { id },
     queryParams: { include: "details" },
     silent: true  // Optional: suppress error notifications
@@ -92,7 +93,7 @@ useQuery({
 ### Error Handling
 
 All API errors are now handled globally. Common scenarios like:
-- 404 responses -> Redirects to /not-found
+
 - Session expiry -> Redirects to /session-expired
 - Bad requests (400/406) -> Shows error notification
 are automatically handled.
@@ -104,6 +105,7 @@ Use the `silent: true` option to suppress error notifications for specific queri
 ### Understanding the Transition
 
 Our codebase contains two patterns for data fetching:
+
 1. Legacy pattern using `useTanStackQueryInstead` (wrapper around TanStack Query)
 2. Modern pattern using TanStack Query directly
 
@@ -125,7 +127,7 @@ function LegacyComponent({ id }) {
 function ModernComponent({ id }) {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: [UserRoutes.getUser.path, id],
-    queryFn: api.query(UserRoutes.getUser, {
+    queryFn: query(UserRoutes.getUser, {
       pathParams: { id }
     }),
     enabled: true,
@@ -162,7 +164,7 @@ useTanStackQueryInstead(route, { prefetch: shouldFetch })
 // Modern
 useQuery({
   queryKey: [route.path],
-  queryFn: api.query(route),
+  queryFn: query(route),
   enabled: shouldFetch
 })
 ```
@@ -178,7 +180,7 @@ useTanStackQueryInstead(route, {
 // Modern
 useQuery({
   queryKey: [route.path, id, filter],
-  queryFn: api.query(route, {
+  queryFn: query(route, {
     pathParams: { id },
     queryParams: { filter }
   })
@@ -194,7 +196,7 @@ if (res?.status === 403) handleForbidden();
 // Modern
 useQuery({
   queryKey: [route.path],
-  queryFn: api.query(route, {
+  queryFn: query(route, {
     silent: true // Optional: suppress error notifications
   })
   // Error handling is now done globally
