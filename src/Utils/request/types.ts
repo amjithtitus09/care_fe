@@ -35,6 +35,13 @@ export interface RequestOptions<TData = unknown, TBody = unknown> {
   silent?: boolean;
 }
 
+export interface QueryOptions<TBody = unknown> {
+  pathParams?: Record<string, string>;
+  queryParams?: Record<string, string>;
+  body?: TBody;
+  silent?: boolean;
+}
+
 export interface PaginatedResponse<TItem> {
   count: number;
   next: string | null;

@@ -1,36 +1,43 @@
 import { navigate } from "raviger";
 
 import * as Notifications from "@/Utils/Notifications";
+import { ResponseError } from "@/Utils/response/responseError";
 
 const notify = Notifications;
 
 export function handleQueryError(error: Error) {
-  const err = error as any; // Cast to any to access our custom properties
+  // Cast to ResponseError if it matches our expected structure
+  if (error instanceof ResponseError) {
+    const errorCause = error.cause;
 
-  // Ignore aborted requests
-  if (err?.name === "AbortError") return;
+    // Ignore aborted requests
+    if (error?.name === "AbortError") return;
 
-  // Handle session expiry
-  if (isSessionExpired(err)) {
-    handleSessionExpiry();
-    return;
-  }
+    // Handle session expiry
+    if (isSessionExpired(errorCause)) {
+      handleSessionExpiry();
+      return;
+    }
 
-  // Handle bad requests
-  if (isBadRequest(err)) {
-    if (!err?.silent) notify.BadRequest({ errs: err });
-    return;
-  }
+    // Handle bad requests
+    if (isBadRequest(errorCause)) {
+      if (!errorCause?.silent) notify.BadRequest({ errs: errorCause });
+      return;
+    }
 
-  // Handle not found
-  if (isNotFound(err)) {
-    handleNotFound();
-    return;
-  }
+    // Handle not found
+    if (isNotFound(errorCause)) {
+      handleNotFound();
+      return;
+    }
 
-  // Handle other errors
-  if (!err?.silent) {
-    notify.Error({ msg: err?.detail || "Something went wrong!" });
+    // Handle other errors
+    if (!errorCause?.silent) {
+      notify.Error({ msg: errorCause?.detail || "Something went wrong!" });
+    }
+  } else {
+    // Handle non-ResponseError errors
+    notify.Error({ msg: error.message || "Something went wrong!" });
   }
 }
 
