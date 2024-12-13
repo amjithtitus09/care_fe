@@ -21,7 +21,14 @@ async function queryRequest<TData, TBody>(
     fetchOptions.body = JSON.stringify(options.body);
   }
 
-  const res = await fetch(url, fetchOptions);
+  let res: Response;
+
+  try {
+    res = await fetch(url, fetchOptions);
+  } catch {
+    throw new Error("Network Error");
+  }
+
   const data = await getResponseBody<TData>(res);
 
   if (!res.ok) {
