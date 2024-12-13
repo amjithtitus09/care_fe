@@ -23,7 +23,7 @@ import { PubSubProvider } from "./Utils/pubsubContext";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 3,
+      retry: 2,
       refetchOnWindowFocus: false,
       staleTime: 5 * 60 * 1000, // 5 minutes
     },
@@ -56,7 +56,7 @@ const App = () => {
       </Suspense>
 
       {/* Devtools are not included in production builds by default */}
-      <ReactQueryDevtools initialIsOpen={false} />
+      <ReactQueryDevtools />
     </QueryClientProvider>
   );
 };
