@@ -21,7 +21,7 @@ async function queryRequest<TData, TBody>(
   if (options?.body) {
     requestOptions.headers = {
       ...requestOptions.headers,
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json",
     };
     requestOptions.body = JSON.stringify(options.body);
   }
@@ -53,9 +53,9 @@ async function queryRequest<TData, TBody>(
  */
 function createQuery<TData, TBody>(
   route: Route<TData, TBody>,
-  options?: QueryOptions,
+  options?: QueryOptions<TBody>,
 ) {
-  return async ({ signal }: { signal?: AbortSignal } = {}) => {
+  return ({ signal }: { signal?: AbortSignal } = {}) => {
     return queryRequest(route, { ...options, signal });
   };
 }

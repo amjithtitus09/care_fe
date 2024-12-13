@@ -40,6 +40,7 @@ export interface QueryOptions<TBody = unknown> {
   queryParams?: Record<string, string>;
   body?: TBody;
   silent?: boolean;
+  signal?: AbortSignal;
 }
 
 export interface PaginatedResponse<TItem> {
