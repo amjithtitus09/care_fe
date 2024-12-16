@@ -206,7 +206,7 @@ export const SidebarShrinkContext = createContext<{
   setShrinked: (state: boolean) => void;
 }>({
   shrinked: false,
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
+
   setShrinked: () => {},
 });
 

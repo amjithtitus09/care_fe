@@ -47,7 +47,7 @@ export default function ExcelFileDragAndDrop({
   const closeModal = () => {
     setSelectedFile(undefined);
     setFileData([]);
-    onClose && onClose();
+    onClose?.();
   };
 
   const onSelectFile = (file: Blob) => {
@@ -98,7 +98,7 @@ export default function ExcelFileDragAndDrop({
       setParsedData(parsedData);
       setValidData(ParsedDataWithOutErrors);
       if (ParsedDataWithOutErrors.length !== 0) {
-        setIsValid && setIsValid(true);
+        setIsValid?.(true);
       }
     }
   }, [fileData]);
@@ -199,7 +199,7 @@ export default function ExcelFileDragAndDrop({
                 setFileData([]);
                 setErrors([]);
                 setValidData([]);
-                setIsValid && setIsValid(false);
+                setIsValid?.(false);
                 dragProps.setDragOver(false);
                 dragProps.setFileDropError("");
               }}
@@ -229,6 +229,7 @@ export default function ExcelFileDragAndDrop({
             target="_blank"
             download
             onClick={(e) => e.stopPropagation()}
+            rel="noreferrer"
           >
             <CareIcon
               icon="l-download-alt"

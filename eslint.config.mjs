@@ -32,6 +32,7 @@ export default [
       globals: {
         ...globals.browser,
         ...globals.node,
+        React: true,
       },
       parserOptions: {
         ecmaFeatures: {
@@ -72,6 +73,7 @@ export default [
         },
       ],
       "@typescript-eslint/no-explicit-any": "warn",
+      "no-undef": "off",
     },
   },
 
