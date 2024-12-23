@@ -72,6 +72,10 @@ export default [
           caughtErrorsIgnorePattern: "^_",
         },
       ],
+      "@typescript-eslint/no-unused-expressions": [
+        "error",
+        { allowShortCircuit: true, allowTernary: true },
+      ],
       "@typescript-eslint/no-explicit-any": "warn",
       "no-undef": "off",
     },

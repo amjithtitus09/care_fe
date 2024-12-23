@@ -162,9 +162,9 @@ export const ShiftCreate = (props: patientShiftProps) => {
             errors[field] = requiredFields[field].errorText;
             isInvalidForm = true;
           } else if (
-            !PhoneNumberValidator()(
+            PhoneNumberValidator()(
               parsePhoneNumber(state.form[field]) ?? "",
-            ) === undefined ||
+            ) !== undefined ||
             !phonePreg(String(parsePhoneNumber(state.form[field])))
           ) {
             errors[field] = requiredFields[field].invalidText;

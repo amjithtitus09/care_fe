@@ -367,7 +367,7 @@ export default function CriticalCarePreview(props: Props) {
                     <tbody className="border border-secondary-400">
                       {fields.map((category) =>
                         data[category.key]?.map((row) => (
-                          <tr>
+                          <tr key={row.name}>
                             <td className="px-2 py-1">
                               <span className="font-semibold">
                                 {category.name}
@@ -527,7 +527,7 @@ export default function CriticalCarePreview(props: Props) {
               {VentilatorFields.map((field) => {
                 const value = data[field.key];
                 return (
-                  <div className="pt-1">
+                  <div key={field.key} className="pt-1">
                     <RangeDetail
                       label={field.label}
                       value={value}

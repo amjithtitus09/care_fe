@@ -727,7 +727,10 @@ export default function UserProfile() {
                       {skillsView?.results?.length
                         ? skillsView.results?.map((skill: SkillModel) => {
                             return (
-                              <span className="flex items-center gap-2 rounded-full border-secondary-300 bg-secondary-200 px-3 text-xs text-secondary-700">
+                              <span
+                                key={skill.skill_object.id}
+                                className="flex items-center gap-2 rounded-full border-secondary-300 bg-secondary-200 px-3 text-xs text-secondary-700"
+                              >
                                 <p className="py-1.5">
                                   {skill.skill_object.name}
                                 </p>

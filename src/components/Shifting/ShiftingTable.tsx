@@ -44,7 +44,7 @@ export default function ShiftingTable(props: {
       navigate(
         `/facility/${shift.assigned_facility}/patient/${shift.patient}/consultation`,
       );
-    } catch (error) {
+    } catch (_error) {
       setModalFor({ externalId: undefined, loading: false });
     }
   };

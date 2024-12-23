@@ -193,15 +193,12 @@ export const Submit = ({ label = "Submit", ...props }: CommonButtonProps) => {
     <ButtonV2
       id="submit"
       type="submit"
-      children={
-        <>
-          <CareIcon icon="l-check-circle" className="text-lg" />
-          <span className="whitespace-pre-wrap">{t(label)}</span>
-        </>
-      }
       {...props}
       className={classNames("w-full md:w-auto", props.className)}
-    />
+    >
+      <CareIcon icon="l-check-circle" className="text-lg" />
+      <span className="whitespace-pre-wrap">{t(label)}</span>
+    </ButtonV2>
   );
 };
 
@@ -213,15 +210,12 @@ export const Cancel = ({ label = "Cancel", ...props }: CommonButtonProps) => {
       type="button"
       variant="secondary"
       border
-      children={
-        <>
-          <CareIcon icon="l-times-circle" className="text-lg" />
-          {label && <span className="whitespace-pre-wrap">{t(label)}</span>}
-        </>
-      }
       {...props}
       className={classNames("w-full md:w-auto", props.className)}
-    />
+    >
+      <CareIcon icon="l-times-circle" className="text-lg" />
+      {label && <span className="whitespace-pre-wrap">{t(label)}</span>}
+    </ButtonV2>
   );
 };
 

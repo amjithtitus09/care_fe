@@ -105,7 +105,7 @@ export interface FacilitySpokeRequest {
   relationship?: SpokeRelationship;
 }
 
-export interface FacilitySpokeErrors {}
+export type FacilitySpokeErrors = Record<string, never>;
 
 export interface OptionsType {
   id: number;

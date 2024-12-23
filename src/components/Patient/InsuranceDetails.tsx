@@ -53,7 +53,7 @@ export const InsuranceDetails = (props: IProps) => {
           data-testid="patient-details"
         >
           {insuranceDetials?.results.map((data: HCXPolicyModel) => (
-            <InsuranceDetailsCard data={data} />
+            <InsuranceDetailsCard key={data.id} data={data} />
           ))}
         </section>
       )}

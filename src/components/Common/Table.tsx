@@ -18,7 +18,10 @@ export default function Table(props: {
         {props.headings.map((heading, i) => {
           if (i === 0) {
             return (
-              <div className="flex min-w-[24px] items-center py-[14px] pl-4 text-sm font-medium text-[#808080]">
+              <div
+                className="flex min-w-[24px] items-center py-[14px] pl-4 text-sm font-medium text-[#808080]"
+                key={heading}
+              >
                 {heading}
               </div>
             );
@@ -34,9 +37,10 @@ export default function Table(props: {
         })}
       </div>
 
-      {props.rows.map((row) => {
+      {props.rows.map((row, rowIndex) => {
         return (
           <div
+            key={`row-${rowIndex}`}
             className="grid min-w-[1000px] overflow-x-auto rounded-sm border border-[#D2D6DC]"
             style={{
               gridTemplateColumns: `repeat(${props.headings.length}, minmax(0, 1fr))`,
@@ -45,14 +49,20 @@ export default function Table(props: {
             {row.map((item, i) => {
               if (i === 0) {
                 return (
-                  <div className="flex min-w-[24px] items-center py-[14px] pl-4 text-sm font-medium text-[#808080]">
+                  <div
+                    key={`cell-${rowIndex}-${i}`}
+                    className="flex min-w-[24px] items-center py-[14px] pl-4 text-sm font-medium text-[#808080]"
+                  >
                     {item}
                   </div>
                 );
               }
               return (
-                <div className="flex min-w-[24px] items-center justify-center py-[14px] text-center text-sm font-bold text-secondary-900">
-                  <>{item}</>
+                <div
+                  key={`cell-${rowIndex}-${i}`}
+                  className="flex min-w-[24px] items-center justify-center py-[14px] text-center text-sm font-bold text-secondary-900"
+                >
+                  {item}
                 </div>
               );
             })}

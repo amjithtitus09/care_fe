@@ -916,6 +916,7 @@ export const ConsultationForm = ({ facilityId, patientId, id }: Props) => {
             const section = sections[sectionTitle as ConsultationFormSection];
             return (
               <button
+                key={sectionTitle}
                 className={`flex w-full items-center justify-start gap-3 rounded-l-lg px-5 py-3 font-medium ${
                   isCurrent ? "bg-white text-primary-500" : "bg-transparent"
                 } transition-all duration-100 ease-in hover:bg-white hover:tracking-wider`}

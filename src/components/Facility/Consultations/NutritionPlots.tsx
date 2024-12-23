@@ -245,11 +245,11 @@ export const NutritionPlots = (props: any) => {
               {Object.entries(results).map((obj: any) => {
                 if (obj[1].infusions && obj[1].infusions.length > 0) {
                   return (
-                    <div>
+                    <div key={obj[0]}>
                       <h4 className="text-sm">- {formatDateTime(obj[0])}</h4>
                       <div className="px-5 text-sm">
                         {obj[1].infusions.map((o: any) => (
-                          <div>
+                          <div key={`${obj[0]}-${o.name}-${o.quantity}`}>
                             {o.name} - {o.quantity}
                           </div>
                         ))}
@@ -273,11 +273,11 @@ export const NutritionPlots = (props: any) => {
               {Object.entries(results).map((obj: any) => {
                 if (obj[1].iv_fluids && obj[1].iv_fluids.length > 0) {
                   return (
-                    <div>
+                    <div key={obj[0]}>
                       <h4 className="text-sm">- {formatDateTime(obj[0])}</h4>
                       <div className="px-5 text-sm">
                         {obj[1].iv_fluids.map((o: any) => (
-                          <div>
+                          <div key={`${obj[0]}-${o.name}-${o.quantity}`}>
                             {o.name} - {o.quantity}
                           </div>
                         ))}
@@ -301,11 +301,11 @@ export const NutritionPlots = (props: any) => {
               {Object.entries(results).map((obj: any) => {
                 if (obj[1].feeds && obj[1].feeds.length > 0) {
                   return (
-                    <div>
+                    <div key={obj[0]}>
                       <h4 className="text-sm">- {formatDateTime(obj[0])}</h4>
                       <div className="px-5 text-sm">
                         {obj[1].feeds.map((o: any) => (
-                          <div>
+                          <div key={`${obj[0]}-${o.name}-${o.quantity}`}>
                             {o.name} - {o.quantity}
                           </div>
                         ))}
@@ -356,11 +356,11 @@ export const NutritionPlots = (props: any) => {
               {Object.entries(results).map((obj: any) => {
                 if (obj[1].output && obj[1].output.length > 0) {
                   return (
-                    <div>
+                    <div key={obj[0]}>
                       <h4 className="text-sm">- {formatDateTime(obj[0])}</h4>
                       <div className="px-5 text-sm">
                         {obj[1].output.map((o: any) => (
-                          <div>
+                          <div key={`${obj[0]}-${o.name}-${o.quantity}`}>
                             {o.name} - {o.quantity}
                           </div>
                         ))}

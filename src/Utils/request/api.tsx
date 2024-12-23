@@ -12,7 +12,7 @@ import {
 import { ICD11DiagnosisModel } from "@/components/Diagnosis/types";
 import {
   EventGeneric,
-  type Type,
+  type Type as EventType,
 } from "@/components/Facility/ConsultationDetails/Events/types";
 import {
   InvestigationGroup,
@@ -606,7 +606,7 @@ const routes = {
   listEventTypes: {
     path: "/api/v1/event_types/",
     method: "GET",
-    TRes: Type<PaginatedResponse<Type>>(),
+    TRes: Type<PaginatedResponse<EventType>>(),
   },
 
   // Patient

@@ -45,10 +45,10 @@ export default function LegendInput(props: InputProps) {
     let hasValue;
     try {
       hasValue = element.matches(":autofill");
-    } catch (err) {
+    } catch (_err) {
       try {
         hasValue = element.matches(":-webkit-autofill");
-      } catch (er) {
+      } catch (_er) {
         hasValue = false;
       }
     }

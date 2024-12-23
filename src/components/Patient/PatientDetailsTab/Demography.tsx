@@ -210,6 +210,7 @@ export const Demography = (props: PatientProps) => {
           value: patientGender,
         },
         <EmergencyContact
+          key={patientData.id}
           number={patientData.emergency_phone_number}
           name={patientData.name}
         />,
@@ -292,6 +293,7 @@ export const Demography = (props: PatientProps) => {
       hidden: !patientData.assigned_to_object,
       details: [
         <EmergencyContact
+          key={patientData.id}
           number={patientData.assigned_to_object?.alt_phone_number}
           name={
             patientData.assigned_to_object
@@ -304,7 +306,7 @@ export const Demography = (props: PatientProps) => {
     {
       id: "insurance-details",
       details: [
-        <div className="w-full md:col-span-2">
+        <div className="w-full md:col-span-2" key="insurance-details">
           {insuranceDetials?.results.map((insurance) => (
             <InsuranceDetailsCard key={insurance.id} data={insurance} />
           ))}

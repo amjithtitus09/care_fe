@@ -150,7 +150,10 @@ const ReportTable: FC<ReportTableProps> = ({
                 </th>
               </tr>
             </thead>
-            <tbody x-max="2">
+            <tbody
+              // eslint-disable-next-line react/no-unknown-property
+              x-max="2"
+            >
               {data.length > 0 ? (
                 data.map((t: any) => {
                   return (

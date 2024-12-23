@@ -258,7 +258,7 @@ function DiagnosisSection({ consultationData }: IDiagnosisSection) {
         ).map(
           (type) =>
             !!diagnoses[type].length && (
-              <div>
+              <div key={type}>
                 <b>
                   {t(`diagnosis__${type}`)} {t("diagnosis")}
                 </b>

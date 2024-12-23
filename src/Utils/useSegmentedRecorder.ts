@@ -107,7 +107,7 @@ const useSegmentedRecording = () => {
       setRecorder(newRecorder);
       setMicrophoneAccess(true);
       setIsRecording(true);
-    } catch (error) {
+    } catch (_error) {
       setMicrophoneAccess(false);
       throw new Error("Microphone access denied");
     }

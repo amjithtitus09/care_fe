@@ -100,6 +100,7 @@ export const TestTable = ({ title, data, state, dispatch }: any) => {
               {["Name", "Value", "Unit", "Min", "Max", "Ideal"].map(
                 (heading) => (
                   <th
+                    key={heading}
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-secondary-800"
                   >
@@ -109,7 +110,10 @@ export const TestTable = ({ title, data, state, dispatch }: any) => {
               )}
             </tr>
           </thead>
-          <tbody x-max="2">
+          <tbody
+            // eslint-disable-next-line react/no-unknown-property
+            x-max="2"
+          >
             {filterTests.length > 0 ? (
               filterTests.map((t: any, i: number) => {
                 return (

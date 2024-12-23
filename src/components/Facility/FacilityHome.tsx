@@ -297,6 +297,7 @@ export const FacilityHome = ({ facilityId }: Props) => {
                             <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
                               {hubsQuery.data.results.map((hub) => (
                                 <FacilityBlock
+                                  key={hub.id}
                                   facility={hub.hub_object}
                                   redirect={false}
                                 />

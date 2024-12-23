@@ -50,4 +50,6 @@ const TextAreaFormField = forwardRef(
   },
 );
 
+TextAreaFormField.displayName = "TextAreaFormField";
+
 export default TextAreaFormField;

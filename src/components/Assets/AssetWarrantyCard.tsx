@@ -38,7 +38,7 @@ export default function AssetWarrantyCard(props: { asset: AssetData }) {
       <div className="flex h-full flex-col justify-between gap-2 md:flex-row xl:flex-col">
         <div className="flex h-full w-full flex-col gap-4 md:border-r xl:w-auto xl:border-r-0">
           {Object.keys(details).map((key) => (
-            <div className="">
+            <div key={key} className="">
               <div className="mb-1 text-xs uppercase italic tracking-widest text-secondary-200">
                 {key}
               </div>
@@ -78,7 +78,7 @@ export default function AssetWarrantyCard(props: { asset: AssetData }) {
               ["Phone", asset.support_phone, "l-phone"],
               ["Email", asset.support_email, "l-envelope"],
             ].map((item) => (
-              <div className="flex items-center">
+              <div key={item[0]} className="flex items-center">
                 {item[1] && (
                   <>
                     <div className="w-16 italic text-secondary-200">

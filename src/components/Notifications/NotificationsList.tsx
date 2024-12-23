@@ -319,7 +319,7 @@ export default function NotificationsList({
           Warn({
             msg: t("unsubscribed_successfully"),
           });
-        } catch (e) {
+        } catch (_e) {
           Error({ msg: t("unsubscribe_failed") });
         }
       }
@@ -376,7 +376,7 @@ export default function NotificationsList({
         });
         setIsSubscribing(false);
       }
-    } catch (error) {
+    } catch (_error) {
       const permission = Notification.permission;
 
       if (permission === "denied" || permission === "default") {

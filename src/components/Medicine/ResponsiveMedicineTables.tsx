@@ -39,7 +39,10 @@ export default function ResponsiveMedicineTable(props: {
             <tr>
               {props.theads.map((item) => {
                 return (
-                  <th className="whitespace-nowrap border-b border-secondary-200 bg-secondary-50 px-6 py-3 text-left text-xs font-medium uppercase leading-4 tracking-wider text-secondary-800">
+                  <th
+                    key={item}
+                    className="whitespace-nowrap border-b border-secondary-200 bg-secondary-50 px-6 py-3 text-left text-xs font-medium uppercase leading-4 tracking-wider text-secondary-800"
+                  >
                     {item}
                   </th>
                 );
@@ -67,14 +70,20 @@ export default function ResponsiveMedicineTable(props: {
                     idx === props.maxWidthColumn
                   ) {
                     return (
-                      <td className="w-full px-6 py-4 text-sm font-medium leading-5 text-secondary-900">
+                      <td
+                        key={idx}
+                        className="w-full px-6 py-4 text-sm font-medium leading-5 text-secondary-900"
+                      >
                         {med[key]}
                       </td>
                     );
                   }
 
                   return (
-                    <td className="px-6 py-4 text-sm leading-5 text-secondary-900">
+                    <td
+                      key={idx}
+                      className="px-6 py-4 text-sm leading-5 text-secondary-900"
+                    >
                       {med[key]}
                     </td>
                   );
@@ -99,7 +108,7 @@ export default function ResponsiveMedicineTable(props: {
                   </div>
                   <div className="mt-2 flex w-full gap-[160px]">
                     {props.fieldsToDisplay?.map((i) => (
-                      <div>
+                      <div key={i}>
                         <h4 className="text-base font-semibold">
                           {props.theads[i]}
                         </h4>
@@ -121,7 +130,7 @@ export default function ResponsiveMedicineTable(props: {
                   {props.objectKeys.map((key, i) => {
                     if (i !== 0 && i !== props.objectKeys.length - 1)
                       return (
-                        <div>
+                        <div key={i}>
                           <h4 className="text-base font-semibold">
                             {props.theads[i]}
                           </h4>{" "}
@@ -131,7 +140,7 @@ export default function ResponsiveMedicineTable(props: {
 
                     if (i === props.objectKeys.length - 1)
                       return (
-                        <div className="col-span-2">
+                        <div className="col-span-2" key={i}>
                           <h4 className="text-base font-semibold">
                             {props.theads[i]}
                           </h4>{" "}

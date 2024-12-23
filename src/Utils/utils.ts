@@ -567,7 +567,7 @@ export const copyToClipboard = async (content: string) => {
   try {
     await navigator.clipboard.writeText(content);
     Notification.Success({ msg: "Copied to clipboard" });
-  } catch (err) {
+  } catch (_err) {
     Notification.Error({ msg: "Copying is not allowed" });
   }
 };

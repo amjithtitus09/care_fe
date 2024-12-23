@@ -74,10 +74,15 @@ export const assetClassProps: {
 
 export interface AssetService {
   id: string;
+  asset: {
+    id: string;
+    name: string;
+  };
   created_date: string;
   modified_date: string;
   serviced_on: string;
   note: string;
+  edits: AssetServiceEdit[];
 }
 
 export interface ResolvedMiddleware {
@@ -171,18 +176,6 @@ export interface AssetServiceEdit {
   note: string;
   edited_on: string;
   edited_by: UserBareMinimum;
-}
-export interface AssetService {
-  id: string;
-  asset: {
-    id: string;
-    name: string;
-  };
-  serviced_on: string;
-  note: string;
-  edits: AssetServiceEdit[];
-  created_date: string;
-  modified_date: string;
 }
 
 export interface PatientAssetBed {

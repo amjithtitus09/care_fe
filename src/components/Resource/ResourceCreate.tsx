@@ -133,7 +133,7 @@ export default function ResourceCreate(props: resourceProps) {
             isInvalidForm = true;
           } else if (
             !phoneNumber ||
-            !PhoneNumberValidator()(phoneNumber) === undefined ||
+            PhoneNumberValidator()(phoneNumber) !== undefined ||
             !phonePreg(String(phoneNumber))
           ) {
             errors[field] = requiredFields[field].invalidText;

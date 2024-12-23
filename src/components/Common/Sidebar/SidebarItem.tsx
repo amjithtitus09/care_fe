@@ -90,15 +90,18 @@ const SidebarItemBase = forwardRef<HTMLAnchorElement, SidebarItemBaseProps>(
     );
   },
 );
+SidebarItemBase.displayName = "SidebarItemBase";
 
 export const SidebarItem = forwardRef(
   (props: SidebarItemProps, ref: Ref<HTMLAnchorElement>) => (
     <SidebarItemBase {...props} ref={ref} />
   ),
 );
+SidebarItem.displayName = "SidebarItem";
 
 export const ShrinkedSidebarItem = forwardRef(
   (props: SidebarItemProps, ref: Ref<HTMLAnchorElement>) => (
     <SidebarItemBase shrinked ref={ref} {...props} />
   ),
 );
+ShrinkedSidebarItem.displayName = "ShrinkedSidebarItem";

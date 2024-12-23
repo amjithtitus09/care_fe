@@ -305,7 +305,7 @@ const Investigation = (props: {
             : listOfInvestigations(group_id, investigations?.results || []);
           const group = findGroup(group_id, investigationGroups?.results || []);
           return (
-            <Card>
+            <Card key={group_id}>
               <TestTable
                 data={filteredInvestigations}
                 title={group?.name}

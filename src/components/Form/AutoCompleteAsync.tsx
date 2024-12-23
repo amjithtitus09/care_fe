@@ -199,6 +199,7 @@ const AutoCompleteAsync = (props: Props) => {
             <div className="flex flex-wrap gap-2 p-2">
               {selected?.map((option: any) => (
                 <MultiSelectOptionChip
+                  key={option.id}
                   label={optionLabel(option)}
                   onRemove={() =>
                     onChange(

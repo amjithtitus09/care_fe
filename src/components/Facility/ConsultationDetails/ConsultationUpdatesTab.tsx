@@ -717,6 +717,7 @@ export const ConsultationUpdatesTab = (props: ConsultationTabProps) => {
                         {EVENTS_SORT_OPTIONS.map(({ isAscending, value }) => {
                           return (
                             <div
+                              key={value}
                               className={classNames(
                                 "dropdown-item-primary pointer-events-auto m-2 flex w-56 cursor-pointer items-center justify-start gap-3 rounded border-0 px-4 py-2 text-sm font-normal transition-all duration-200 ease-in-out",
                                 eventsQuery?.ordering?.toString() === value

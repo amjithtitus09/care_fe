@@ -289,4 +289,7 @@ const CountryCodesList = ({
     </div>
   );
 };
+
+PhoneNumberFormField.displayName = "PhoneNumberFormField";
+
 export default PhoneNumberFormField;

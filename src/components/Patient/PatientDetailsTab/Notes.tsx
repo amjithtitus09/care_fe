@@ -71,7 +71,7 @@ const PatientNotes = (props: PatientProps) => {
         setReplyTo(undefined);
         Notification.Success({ msg: "Note added successfully" });
       }
-    } catch (error) {
+    } catch (_error) {
       Notification.Error({
         msg: "Failed to add note. Please try again.",
       });

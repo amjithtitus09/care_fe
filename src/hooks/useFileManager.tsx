@@ -464,7 +464,7 @@ export default function useFileManager(
       // Clean up
       window.URL.revokeObjectURL(blobUrl);
       document.body.removeChild(a);
-    } catch (err) {
+    } catch (_err) {
       Notification.Error({ msg: "Failed to download file" });
     }
   };

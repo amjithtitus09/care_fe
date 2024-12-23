@@ -525,7 +525,7 @@ export const PatientRegister = (props: PatientRegisterProps) => {
           if (
             !form[field] ||
             !phoneNumber ||
-            !PhoneNumberValidator()(phoneNumber) === undefined
+            PhoneNumberValidator()(phoneNumber) !== undefined
           ) {
             errors[field] = "Please enter valid phone number";
           }
@@ -535,7 +535,7 @@ export const PatientRegister = (props: PatientRegisterProps) => {
           if (
             !form[field] ||
             !emergency_phone_number ||
-            !PhoneNumberValidator()(emergency_phone_number) === undefined
+            PhoneNumberValidator()(emergency_phone_number) !== undefined
           ) {
             errors[field] = "Please enter valid phone number";
           }
@@ -1117,13 +1117,13 @@ export const PatientRegister = (props: PatientRegisterProps) => {
                         description={
                           <div>
                             <div>
-                              While entering a patient's age is an option,
+                              While entering a patient&apos;s age is an option,
                               please note that only the year of birth will be
                               captured from this information.
                             </div>
                             <b>
-                              Recommended only when the patient's date of birth
-                              is unknown
+                              Recommended only when the patient&apos;s date of
+                              birth is unknown
                             </b>
                           </div>
                         }

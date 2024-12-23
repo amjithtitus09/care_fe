@@ -18,6 +18,7 @@ const TestRow = ({ data, i, onChange, showForm, value, isChanged }: any) => {
         i % 2 == 0 ? "bg-secondary-50" : "bg-white",
         isChanged && "!bg-primary-300",
       )}
+      // eslint-disable-next-line react/no-unknown-property
       x-description="Even row"
     >
       <td className="whitespace-nowrap px-6 py-4 text-xs">

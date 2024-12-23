@@ -169,7 +169,7 @@ const AssetsList = () => {
           msg: t("invalid_asset_id_msg"),
         });
       }
-    } catch (err) {
+    } catch (_err) {
       Notification.Error({
         msg: t("invalid_asset_id_msg"),
       });

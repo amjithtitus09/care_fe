@@ -77,14 +77,15 @@ export const BedSelect = (props: BedSelectProps) => {
       fetchData={onBedSearch}
       optionLabel={(option: any) => {
         if (Object.keys(option).length === 0) return "";
-        return (
-          `${option.name}, ${option?.location_object?.name || t("unknown")}` ||
-          option?.location_object?.name
-        );
+        const nameWithLocation = option.name
+          ? `${option.name}, ${option?.location_object?.name || t("unknown")}`
+          : option?.location_object?.name;
+        return nameWithLocation || "";
       }}
       optionLabelChip={(option: any) => {
         if (Object.keys(option).length === 0) return "";
-        return `${t(option?.bed_type)}` || t("unknown");
+        const translatedBedType = option?.bed_type ? t(option.bed_type) : "";
+        return translatedBedType || t("unknown");
       }}
       compareBy="id"
       error={error}

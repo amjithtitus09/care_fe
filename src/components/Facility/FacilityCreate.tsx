@@ -339,7 +339,7 @@ export const FacilityCreate = (props: FacilityProps) => {
           const phoneNumber = state.form[field];
           if (
             !phoneNumber ||
-            !PhoneNumberValidator()(phoneNumber) === undefined ||
+            PhoneNumberValidator()(phoneNumber) !== undefined ||
             !phonePreg(phoneNumber)
           ) {
             errors[field] = t("invalid_phone_number");
