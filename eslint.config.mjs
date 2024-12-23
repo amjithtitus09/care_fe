@@ -119,6 +119,17 @@ export default [
     },
   },
 
+  // Cypress-specific rules
+  {
+    files: ["cypress/**/*.ts"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        project: "./cypress/tsconfig.json",
+      },
+    },
+  },
+
   // Add prettier recommended config last
   eslintPluginPrettierRecommended,
 ];

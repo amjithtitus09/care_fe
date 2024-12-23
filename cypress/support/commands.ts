@@ -94,7 +94,7 @@ Cypress.Commands.add("getAttached", (selector: string) => {
       $el = getElement(Cypress.$($d));
       // Ensure $el is an HTMLElement before checking if it is detached
       if ($el.length && $el[0] instanceof HTMLElement) {
-        expect(Cypress.dom.isDetached($el[0])).to.be.false; // Access the first HTMLElement
+        expect(Cypress.dom.isDetached($el[0])).to.equal(false); // Access the first HTMLElement
       } else {
         throw new Error("Element is not an HTMLElement or is detached.");
       }
