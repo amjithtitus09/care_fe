@@ -59,17 +59,13 @@ export class AssetHome {
   }
 
   selectImportFacility(facilityName: string) {
-    cy.get("input[name='facilities']")
-      .type(facilityName)
-      .then(() => {
-        cy.get("[role='option']").contains(facilityName).click();
-      });
+    cy.typeAndSelectOption("input[name='facilities']", facilityName);
   }
 
   selectAssetImportButton(action: "click" | "verifyNotExist"): void {
     const selector = "[data-testid=import-asset-button]";
     if (action === "click") {
-      cy.get(selector).scrollIntoView().should("be.visible").click();
+      cy.verifyAndClickElement(selector, "Import/Export");
     } else if (action === "verifyNotExist") {
       cy.get(selector).should("not.exist");
     }
@@ -98,15 +94,12 @@ export class AssetHome {
   }
 
   selectImportLocation(locationName: string) {
-    cy.clickAndSelectOption(
-      "[data-testid=select-import-location]",
-      locationName,
-    );
+    cy.clickAndSelectOption("#asset-import-location", locationName);
   }
 
   clickImportAsset() {
     cy.intercept("POST", "**/api/v1/asset/").as("importAsset");
-    cy.clickSubmitButton("Import");
+    cy.clickSubmitButton("Submit");
     cy.wait("@importAsset").its("response.statusCode").should("eq", 201);
   }
 }
