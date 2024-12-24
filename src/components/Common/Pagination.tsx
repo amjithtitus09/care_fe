@@ -97,17 +97,15 @@ const Pagination = ({
           tooltip="Previous"
           onClick={() => goToPage(currentPage - 1)}
           disabled={currentPage - 1 <= 0}
-        >
-          <CareIcon icon="l-angle-left" className="text-lg" />
-        </NavButton>
+          children={<CareIcon icon="l-angle-left" className="text-lg" />}
+        />
         <NavButton
           id="next-page"
           tooltip="Next"
+          children={<CareIcon icon="l-angle-right" className="text-lg" />}
           onClick={() => goToPage(currentPage + 1)}
           disabled={currentPage + 1 > totalPage}
-        >
-          <CareIcon icon="l-angle-right" className="text-lg" />
-        </NavButton>
+        />
       </div>
 
       {/* Desktop view */}
@@ -115,19 +113,17 @@ const Pagination = ({
         <NavButton
           id="first-page"
           tooltip="Jump to first page"
+          children={<CareIcon icon="l-angle-double-left" className="text-lg" />}
           onClick={() => goToPage(1)}
           disabled={currentPage === 1}
-        >
-          <CareIcon icon="l-angle-double-left" className="text-lg" />
-        </NavButton>
+        />
         <NavButton
           id="prev-pages"
           tooltip="Previous"
           onClick={() => goToPage(currentPage - 1)}
           disabled={currentPage - 1 <= 0}
-        >
-          <CareIcon icon="l-angle-left" className="text-lg" />
-        </NavButton>
+          children={<CareIcon icon="l-angle-left" className="text-lg" />}
+        />
 
         {pageNumbers.map((page) => (
           <NavButton
@@ -144,19 +140,19 @@ const Pagination = ({
         <NavButton
           id="next-pages"
           tooltip="Next"
+          children={<CareIcon icon="l-angle-right" className="text-lg" />}
           onClick={() => goToPage(currentPage + 1)}
           disabled={currentPage + 1 > totalPage}
-        >
-          <CareIcon icon="l-angle-right" className="text-lg" />
-        </NavButton>
+        />
         <NavButton
           id="last-page"
           tooltip="Jump to last page"
+          children={
+            <CareIcon icon="l-angle-double-right" className="text-lg" />
+          }
           onClick={() => goToPage(totalPage)}
           disabled={totalPage === 0 || currentPage === totalPage}
-        >
-          <CareIcon icon="l-angle-double-right" className="text-lg" />
-        </NavButton>
+        />
       </nav>
     </div>
   );

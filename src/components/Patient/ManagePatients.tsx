@@ -1108,17 +1108,18 @@ export const PatientManager = () => {
               ) || "",
             ),
           ]}
-        >
-          {(qParams.last_consultation_admitted_bed_type_list ||
-            qParams.last_consultation__consent_types) && (
-            <>
-              {qParams.last_consultation_admitted_bed_type_list &&
-                LastAdmittedToTypeBadges()}
-              {qParams.last_consultation__consent_types &&
-                HasConsentTypesBadges()}
-            </>
-          )}
-        </FilterBadges>
+          children={
+            (qParams.last_consultation_admitted_bed_type_list ||
+              qParams.last_consultation__consent_types) && (
+              <>
+                {qParams.last_consultation_admitted_bed_type_list &&
+                  LastAdmittedToTypeBadges()}
+                {qParams.last_consultation__consent_types &&
+                  HasConsentTypesBadges()}
+              </>
+            )
+          }
+        />
       </div>
       <div>
         <PatientFilter

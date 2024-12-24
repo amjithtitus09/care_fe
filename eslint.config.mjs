@@ -92,6 +92,7 @@ export default [
       ...reactPlugin.configs.recommended.rules,
       ...reactHooksPlugin.configs.recommended.rules,
       "react/prop-types": "off",
+      "react/no-children-prop": "off",
     },
   },
 
