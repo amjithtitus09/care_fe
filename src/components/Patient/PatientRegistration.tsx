@@ -72,7 +72,7 @@ export default function PatientRegistration(
   const [showAutoFilledPincode, setShowAutoFilledPincode] = useState(false);
   const [form, setForm] = useState<Partial<PatientModel>>({
     nationality: "India",
-    phone_number: "+91",
+    phone_number: phone_number || "+91",
     emergency_phone_number: "+91",
   });
   const [feErrors, setFeErrors] = useState<
@@ -81,12 +81,6 @@ export default function PatientRegistration(
   const [suppressDuplicateWarning, setSuppressDuplicateWarning] =
     useState(!!patientId);
   const [debouncedNumber, setDebouncedNumber] = useState<string>();
-
-  useEffect(() => {
-    if (phone_number) {
-      setForm((f) => ({ ...f, phone_number }));
-    }
-  }, [phone_number]);
 
   const sidebarItems = [
     { label: t("patient__general-info"), id: "general-info" },
