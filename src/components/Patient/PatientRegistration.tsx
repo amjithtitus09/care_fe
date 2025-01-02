@@ -60,8 +60,7 @@ interface PatientRegistrationPageProps {
 export default function PatientRegistration(
   props: PatientRegistrationPageProps,
 ) {
-  const [qParams] = useQueryParams();
-  const { phone_number } = qParams;
+  const [{ phone_number }] = useQueryParams();
   const { patientId, facilityId } = props;
   const { t } = useTranslation();
   const { goBack } = useAppHistory();
