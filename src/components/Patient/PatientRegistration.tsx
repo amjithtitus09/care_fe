@@ -1,6 +1,6 @@
 import careConfig from "@careConfig";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { navigate } from "raviger";
+import { navigate, useQueryParams } from "raviger";
 import { Fragment, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -60,6 +60,8 @@ interface PatientRegistrationPageProps {
 export default function PatientRegistration(
   props: PatientRegistrationPageProps,
 ) {
+  const [qParams] = useQueryParams();
+  const { phone_number } = qParams;
   const { patientId, facilityId } = props;
   const { t } = useTranslation();
   const { goBack } = useAppHistory();
@@ -79,6 +81,12 @@ export default function PatientRegistration(
   const [suppressDuplicateWarning, setSuppressDuplicateWarning] =
     useState(!!patientId);
   const [debouncedNumber, setDebouncedNumber] = useState<string>();
+
+  useEffect(() => {
+    if (phone_number) {
+      setForm((f) => ({ ...f, phone_number }));
+    }
+  }, [phone_number]);
 
   const sidebarItems = [
     { label: t("patient__general-info"), id: "general-info" },
