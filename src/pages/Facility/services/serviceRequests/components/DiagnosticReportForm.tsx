@@ -9,7 +9,7 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -139,16 +139,34 @@ export function DiagnosticReportForm({
 
   // AD diagnostic report codes that are not yet used by an existing report.
   // Backend supports multiple reports per service request — one per AD code.
-  const adReportCodes = activityDefinition?.diagnostic_report_codes ?? [];
-  const usedReportCodes = new Set(
-    diagnosticReports.map((r) => r.code?.code).filter((c): c is string => !!c),
+  // Memoize all three derived values together against their concrete inputs
+  // (`activityDefinition` reference and `diagnosticReports` reference) so the
+  // logical-fallback `?? []` doesn't fabricate a new array dependency.
+  const adReportCodes = useMemo(
+    () => activityDefinition?.diagnostic_report_codes ?? [],
+    [activityDefinition],
   );
-  const availableReportCodes = adReportCodes.filter(
-    (c) => !usedReportCodes.has(c.code),
+  const usedReportCodes = useMemo(
+    () =>
+      new Set(
+        diagnosticReports
+          .map((r) => r.code?.code)
+          .filter((c): c is string => !!c),
+      ),
+    [diagnosticReports],
+  );
+  const availableReportCodes = useMemo(
+    () => adReportCodes.filter((c) => !usedReportCodes.has(c.code)),
+    [adReportCodes, usedReportCodes],
   );
   const hasAdReportCodes = adReportCodes.length > 0;
   const allAdReportCodesUsed =
     hasAdReportCodes && availableReportCodes.length === 0;
+  // True when the user's currently-selected code has just become "used" (e.g.
+  // because a report for it was finalized). The Create button must be disabled
+  // and any guard must reject this state to prevent a silent no-op.
+  const selectedCodeAlreadyUsed =
+    !!selectedReportCode?.code && usedReportCodes.has(selectedReportCode.code);
 
   // Check if all required specimens are collected
   const hasCollectedSpecimens =
@@ -214,7 +232,6 @@ export function DiagnosticReportForm({
 
   // Effect to handle diagnostic reports changes
   useEffect(() => {
-    const latestReport = diagnosticReports[0];
     if (latestReport) {
       setIsExpanded(true);
       // Only auto-fill the report code from the latest report when:
@@ -229,8 +246,10 @@ export function DiagnosticReportForm({
         setSelectedReportCode(latestReport.code || null);
       }
     }
+    // selectedReportCode intentionally omitted: re-running this effect on
+    // every selection change would clobber the user's pick mid-edit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [diagnosticReports]);
+  }, [latestReport]);
 
   // Effect to handle fullReport changes
   useEffect(() => {
@@ -243,6 +262,8 @@ export function DiagnosticReportForm({
       // the user has not picked a new code for the next report.
       setSelectedReportCode(fullReport.code || null);
     }
+    // selectedReportCode intentionally omitted: re-running this effect on
+    // every selection change would clobber the user's pick mid-edit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fullReport]);
 
@@ -279,12 +300,21 @@ export function DiagnosticReportForm({
           external_id: latestReport?.id || "",
         },
       }),
-      onSuccess: () => {
+      onSuccess: (updated: DiagnosticReportRead) => {
         toast.success(t("conclusion_updated_successfully"));
         queryClient.invalidateQueries({
           queryKey: ["diagnosticReport", latestReport?.id],
         });
         setIsExpanded(false);
+        // If the user just finalized this report, reset local form state so
+        // the next AD code can be selected without a stale selectedReportCode
+        // pinned to the now-used code (would otherwise leave the Select with
+        // an empty trigger and a silently no-op Create button).
+        if (updated?.status === DiagnosticReportStatus.final) {
+          setSelectedReportCode(null);
+          setObservations({});
+          setConclusion("");
+        }
       },
       onError: () => {
         toast.success(t("failed_to_update_conclusion"));
@@ -504,9 +534,6 @@ export function DiagnosticReportForm({
     // Allow creating a new report when:
     //  - a code is selected (or there are no AD codes configured), AND
     //  - that code is not already used by an existing diagnostic report.
-    const selectedCodeAlreadyUsed =
-      !!selectedReportCode?.code &&
-      usedReportCodes.has(selectedReportCode.code);
     if (selectedCodeAlreadyUsed) {
       return;
     }
@@ -1291,7 +1318,8 @@ export function DiagnosticReportForm({
                       disableEdit ||
                       isCreatingReport ||
                       !hasCollectedSpecimens ||
-                      (hasAdReportCodes && !selectedReportCode)
+                      (hasAdReportCodes && !selectedReportCode) ||
+                      selectedCodeAlreadyUsed
                     }
                     className="w-full sm:w-auto sm:shrink-0"
                   >

@@ -326,6 +326,10 @@ export default function ServiceRequestShow({
     request?.diagnostic_reports?.[0]?.status === DiagnosticReportStatus.final;
 
   const adReportCodes = activityDefinition?.diagnostic_report_codes ?? [];
+  // Tiny derived Set; not memoized because `diagnosticReports` is rebuilt on
+  // every render upstream (`request.diagnostic_reports || []`), so a useMemo
+  // here would re-run anyway and would also have to be hoisted above the
+  // component's early-return branches.
   const usedReportCodes = new Set(
     diagnosticReports.map((r) => r.code?.code).filter((c): c is string => !!c),
   );
