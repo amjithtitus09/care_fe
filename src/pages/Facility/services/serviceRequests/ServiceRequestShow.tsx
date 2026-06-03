@@ -325,6 +325,22 @@ export default function ServiceRequestShow({
   const isFinal =
     request?.diagnostic_reports?.[0]?.status === DiagnosticReportStatus.final;
 
+  const adReportCodes = activityDefinition?.diagnostic_report_codes ?? [];
+  const usedReportCodes = new Set(
+    diagnosticReports.map((r) => r.code?.code).filter((c): c is string => !!c),
+  );
+  const hasUnusedAdReportCodes =
+    adReportCodes.length > 0 &&
+    adReportCodes.some((c) => !usedReportCodes.has(c.code));
+  const latestDiagnosticReport = diagnosticReports[0];
+  const latestReportInProgress =
+    !!latestDiagnosticReport &&
+    latestDiagnosticReport.status !== DiagnosticReportStatus.final;
+  const shouldShowDiagnosticReportForm =
+    adReportCodes.length > 0
+      ? hasUnusedAdReportCodes || latestReportInProgress
+      : !diagnosticReports.length || latestReportInProgress;
+
   const canMarkAsComplete =
     isFinal ||
     CLASSIFICATIONS_CAN_BE_MARKED_AS_COMPLETE.includes(request.category);
@@ -596,9 +612,7 @@ export default function ServiceRequestShow({
                 </DropdownMenu>
               </div>
             )}
-            {(!diagnosticReports.length ||
-              diagnosticReports[0]?.status !==
-                DiagnosticReportStatus.final) && (
+            {shouldShowDiagnosticReportForm && (
               <DiagnosticReportForm
                 patientId={request.encounter.patient.id}
                 facilityId={facilityId}

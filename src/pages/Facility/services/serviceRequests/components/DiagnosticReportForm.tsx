@@ -137,6 +137,19 @@ export function DiagnosticReportForm({
     diagnosticReports.length > 0 ? diagnosticReports[0] : null;
   const hasReport = !!latestReport;
 
+  // AD diagnostic report codes that are not yet used by an existing report.
+  // Backend supports multiple reports per service request — one per AD code.
+  const adReportCodes = activityDefinition?.diagnostic_report_codes ?? [];
+  const usedReportCodes = new Set(
+    diagnosticReports.map((r) => r.code?.code).filter((c): c is string => !!c),
+  );
+  const availableReportCodes = adReportCodes.filter(
+    (c) => !usedReportCodes.has(c.code),
+  );
+  const hasAdReportCodes = adReportCodes.length > 0;
+  const allAdReportCodesUsed =
+    hasAdReportCodes && availableReportCodes.length === 0;
+
   // Check if all required specimens are collected
   const hasCollectedSpecimens =
     activityDefinition?.specimen_requirements?.length === 0 ||
@@ -180,6 +193,10 @@ export function DiagnosticReportForm({
       }),
       onSuccess: () => {
         toast.success(t("diagnostic_report_created_successfully"));
+        // Reset local state so the form is ready for the next AD code.
+        setSelectedReportCode(null);
+        setObservations({});
+        setConclusion("");
         queryClient.invalidateQueries({
           queryKey: ["serviceRequest"],
         });
@@ -199,18 +216,34 @@ export function DiagnosticReportForm({
   useEffect(() => {
     const latestReport = diagnosticReports[0];
     if (latestReport) {
-      // If we have a new report, update the UI accordingly
-      setSelectedReportCode(latestReport.code || null);
       setIsExpanded(true);
+      // Only auto-fill the report code from the latest report when:
+      //  - the latest report is still in progress (not final), AND
+      //  - the user hasn't already picked a different code for the next report.
+      // Once the latest report is final, the user is creating the next report
+      // for a different AD code, so we must not overwrite their selection.
+      if (
+        latestReport.status !== DiagnosticReportStatus.final &&
+        !selectedReportCode
+      ) {
+        setSelectedReportCode(latestReport.code || null);
+      }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [diagnosticReports]);
 
   // Effect to handle fullReport changes
   useEffect(() => {
-    if (fullReport) {
-      // When we get the full report details, ensure UI is in correct state
+    if (
+      fullReport &&
+      fullReport.status !== DiagnosticReportStatus.final &&
+      !selectedReportCode
+    ) {
+      // Only sync from the full report while it is still in progress and
+      // the user has not picked a new code for the next report.
       setSelectedReportCode(fullReport.code || null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fullReport]);
 
   // Upserting observations for a diagnostic report
@@ -468,26 +501,35 @@ export function DiagnosticReportForm({
   }
 
   function handleCreateReport() {
-    // Only create a new report if no reports exist
-    if (!hasReport) {
-      if (!hasCollectedSpecimens) {
-        toast.error(t("specimen_collection_required"));
-        return;
-      }
-
-      const category: Code = {
-        code: "LAB",
-        display: "Laboratory",
-        system: "http://terminology.hl7.org/CodeSystem/v2-0074",
-      };
-
-      createDiagnosticReport({
-        status: DiagnosticReportStatus.preliminary,
-        category,
-        service_request: serviceRequestId,
-        code: selectedReportCode || undefined,
-      });
+    // Allow creating a new report when:
+    //  - a code is selected (or there are no AD codes configured), AND
+    //  - that code is not already used by an existing diagnostic report.
+    const selectedCodeAlreadyUsed =
+      !!selectedReportCode?.code &&
+      usedReportCodes.has(selectedReportCode.code);
+    if (selectedCodeAlreadyUsed) {
+      return;
     }
+    if (hasAdReportCodes && !selectedReportCode) {
+      return;
+    }
+    if (!hasCollectedSpecimens) {
+      toast.error(t("specimen_collection_required"));
+      return;
+    }
+
+    const category: Code = {
+      code: "LAB",
+      display: "Laboratory",
+      system: "http://terminology.hl7.org/CodeSystem/v2-0074",
+    };
+
+    createDiagnosticReport({
+      status: DiagnosticReportStatus.preliminary,
+      category,
+      service_request: serviceRequestId,
+      code: selectedReportCode || undefined,
+    });
   }
 
   function handleSubmit() {
@@ -897,227 +939,223 @@ export function DiagnosticReportForm({
               __name="ServiceRequestAction"
               serviceRequestId={serviceRequestId}
             />
-            {hasReport && fullReport ? (
+            {hasReport &&
+            fullReport &&
+            fullReport.status !== DiagnosticReportStatus.final ? (
               <div className="space-y-6">
-                {fullReport.status !== DiagnosticReportStatus.final && (
-                  <PLUGIN_Component
-                    __name="DiagnosticReportOverride"
-                    observationDefinitions={observationDefinitions}
-                    handleComponentValueChange={handleComponentValueChange}
-                    handleValueChange={handleValueChange}
-                    handleUnitChange={handleUnitChange}
-                    disabled={disableEdit}
-                  />
-                )}
-                {fullReport.status !== DiagnosticReportStatus.final &&
-                  observationDefinitions.map((definition) => {
-                    const observationsList = observations[definition.id] || [
-                      {
-                        id: "",
-                        value: "",
-                        unit: definition.permitted_unit?.code || "",
-                        interpretation: "",
-                        status: ObservationStatus.AMENDED,
-                        components: {},
-                      },
-                    ];
+                <PLUGIN_Component
+                  __name="DiagnosticReportOverride"
+                  observationDefinitions={observationDefinitions}
+                  handleComponentValueChange={handleComponentValueChange}
+                  handleValueChange={handleValueChange}
+                  handleUnitChange={handleUnitChange}
+                  disabled={disableEdit}
+                />
+                {observationDefinitions.map((definition) => {
+                  const observationsList = observations[definition.id] || [
+                    {
+                      id: "",
+                      value: "",
+                      unit: definition.permitted_unit?.code || "",
+                      interpretation: "",
+                      status: ObservationStatus.AMENDED,
+                      components: {},
+                    },
+                  ];
 
-                    return (
-                      <Card
-                        key={definition.id}
-                        className="mb-4 shadow-none rounded-lg border-gray-200 bg-gray-50"
-                      >
-                        <CardContent className="p-4">
-                          <div className="grid gap-4">
-                            <div className="flex justify-between items-start">
-                              <Label className="text-base font-semibold text-gray-950">
-                                {definition.title || definition.code?.display}
-                              </Label>
-                            </div>
+                  return (
+                    <Card
+                      key={definition.id}
+                      className="mb-4 shadow-none rounded-lg border-gray-200 bg-gray-50"
+                    >
+                      <CardContent className="p-4">
+                        <div className="grid gap-4">
+                          <div className="flex justify-between items-start">
+                            <Label className="text-base font-semibold text-gray-950">
+                              {definition.title || definition.code?.display}
+                            </Label>
+                          </div>
 
-                            {observationsList.map((observationData, index) => {
-                              const hasComponents =
-                                definition.component &&
-                                definition.component.length > 0;
-                              const isErrored =
-                                observationData.status ===
-                                ObservationStatus.ENTERED_IN_ERROR;
-                              return (
-                                <div
-                                  key={index}
-                                  className={cn(
-                                    "space-y-1 bg-gray-200/50 p-4 rounded-lg",
-                                    isErrored && "bg-gray-100",
+                          {observationsList.map((observationData, index) => {
+                            const hasComponents =
+                              definition.component &&
+                              definition.component.length > 0;
+                            const isErrored =
+                              observationData.status ===
+                              ObservationStatus.ENTERED_IN_ERROR;
+                            return (
+                              <div
+                                key={index}
+                                className={cn(
+                                  "space-y-1 bg-gray-200/50 p-4 rounded-lg",
+                                  isErrored && "bg-gray-100",
+                                )}
+                              >
+                                <div className="flex justify-between items-center">
+                                  <Label className="text-sm font-semibold text-gray-950">
+                                    {t("observation") + " " + (index + 1)}
+                                  </Label>
+                                  {isErrored ? (
+                                    <span className="text-sm text-red-500">
+                                      {t("marked_for_deletion")}
+                                    </span>
+                                  ) : (
+                                    !disableEdit && (
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-destructive hover:text-destructive hover:bg-destructive/10 ml-2"
+                                        onClick={() =>
+                                          handleDeleteObservation(
+                                            definition.id,
+                                            index,
+                                          )
+                                        }
+                                        disabled={
+                                          isErrored ||
+                                          (index === 0 && !observationData.id)
+                                        }
+                                      >
+                                        <Trash2 className="size-4" />
+                                      </Button>
+                                    )
                                   )}
-                                >
-                                  <div className="flex justify-between items-center">
-                                    <Label className="text-sm font-semibold text-gray-950">
-                                      {t("observation") + " " + (index + 1)}
-                                    </Label>
-                                    {isErrored ? (
-                                      <span className="text-sm text-red-500">
-                                        {t("marked_for_deletion")}
-                                      </span>
-                                    ) : (
-                                      !disableEdit && (
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="sm"
-                                          className="text-destructive hover:text-destructive hover:bg-destructive/10 ml-2"
-                                          onClick={() =>
-                                            handleDeleteObservation(
-                                              definition.id,
-                                              index,
-                                            )
-                                          }
-                                          disabled={
-                                            isErrored ||
-                                            (index === 0 && !observationData.id)
-                                          }
-                                        >
-                                          <Trash2 className="size-4" />
-                                        </Button>
-                                      )
-                                    )}
-                                  </div>
+                                </div>
 
-                                  {/* For blood pressure and similar observations with components, we may or may not need to show the main value field */}
-                                  {!hasComponents && (
-                                    <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 items-stretch sm:items-center">
-                                      {definition.permitted_unit && (
-                                        <div className="w-full sm:w-32">
-                                          <Label className="text-sm font-medium mb-1 block text-gray-700">
-                                            {t("unit")}
-                                          </Label>
-                                          <Select
-                                            value={observationData.unit}
-                                            onValueChange={(unit) =>
-                                              handleUnitChange(
-                                                definition.id,
-                                                index,
-                                                unit,
-                                              )
-                                            }
-                                            disabled={isErrored || disableEdit}
-                                          >
-                                            <SelectTrigger className="w-full">
-                                              <SelectValue
-                                                placeholder={t("unit")}
-                                              />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                              <SelectItem
-                                                value={
-                                                  definition.permitted_unit.code
-                                                }
-                                              >
-                                                {definition.permitted_unit
-                                                  .code ||
-                                                  definition.permitted_unit
-                                                    .display}
-                                              </SelectItem>
-                                            </SelectContent>
-                                          </Select>
-                                        </div>
-                                      )}
-
-                                      <div className="flex-1">
+                                {/* For blood pressure and similar observations with components, we may or may not need to show the main value field */}
+                                {!hasComponents && (
+                                  <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 items-stretch sm:items-center">
+                                    {definition.permitted_unit && (
+                                      <div className="w-full sm:w-32">
                                         <Label className="text-sm font-medium mb-1 block text-gray-700">
-                                          {t("result")}
+                                          {t("unit")}
                                         </Label>
-                                        <Input
-                                          value={observationData.value}
-                                          onChange={(e) =>
-                                            handleValueChange(
+                                        <Select
+                                          value={observationData.unit}
+                                          onValueChange={(unit) =>
+                                            handleUnitChange(
                                               definition.id,
                                               index,
-                                              e.target.value,
-                                              observationData.unit,
+                                              unit,
                                             )
-                                          }
-                                          placeholder={t("result_value")}
-                                          type={
-                                            definition.permitted_data_type ===
-                                              "decimal" ||
-                                            definition.permitted_data_type ===
-                                              "integer"
-                                              ? "number"
-                                              : "text"
                                           }
                                           disabled={isErrored || disableEdit}
-                                        />
+                                        >
+                                          <SelectTrigger className="w-full">
+                                            <SelectValue
+                                              placeholder={t("unit")}
+                                            />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem
+                                              value={
+                                                definition.permitted_unit.code
+                                              }
+                                            >
+                                              {definition.permitted_unit.code ||
+                                                definition.permitted_unit
+                                                  .display}
+                                            </SelectItem>
+                                          </SelectContent>
+                                        </Select>
                                       </div>
-                                    </div>
-                                  )}
-
-                                  {/* Render component inputs for multi-component observations */}
-                                  {hasComponents &&
-                                    renderComponentInputs(
-                                      definition,
-                                      observationData,
-                                      index,
                                     )}
-                                </div>
-                              );
-                            })}
 
-                            {/* Add button for multiple observations */}
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setObservations((prev) => {
-                                  const currentList = prev[definition.id] || [];
-                                  return {
-                                    ...prev,
-                                    [definition.id]: [
-                                      ...currentList,
-                                      {
-                                        id: "",
-                                        value: "",
-                                        unit:
-                                          definition.permitted_unit?.code || "",
-                                        status: ObservationStatus.AMENDED,
-                                        components: {},
-                                      },
-                                    ],
-                                  };
-                                });
-                              }}
-                              disabled={disableEdit}
-                            >
-                              <PlusCircle className="size-4 mr-2" />
-                              {t("add_another_result")}
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
+                                    <div className="flex-1">
+                                      <Label className="text-sm font-medium mb-1 block text-gray-700">
+                                        {t("result")}
+                                      </Label>
+                                      <Input
+                                        value={observationData.value}
+                                        onChange={(e) =>
+                                          handleValueChange(
+                                            definition.id,
+                                            index,
+                                            e.target.value,
+                                            observationData.unit,
+                                          )
+                                        }
+                                        placeholder={t("result_value")}
+                                        type={
+                                          definition.permitted_data_type ===
+                                            "decimal" ||
+                                          definition.permitted_data_type ===
+                                            "integer"
+                                            ? "number"
+                                            : "text"
+                                        }
+                                        disabled={isErrored || disableEdit}
+                                      />
+                                    </div>
+                                  </div>
+                                )}
 
-                {fullReport.status !== DiagnosticReportStatus.final && (
-                  <Card className="mb-4 shadow-none rounded-lg border-gray-200 bg-gray-50">
-                    <CardContent className="p-4 space-y-2">
-                      <Label
-                        htmlFor="conclusion"
-                        className="text-base font-semibold text-gray-950"
-                      >
-                        {t("conclusion")}
-                      </Label>
-                      <textarea
-                        id="conclusion"
-                        className="w-full field-sizing-content focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 rounded-lg border border-gray-300 p-2"
-                        placeholder={t("enter_conclusion")}
-                        value={conclusion}
-                        onChange={(e) => setConclusion(e.target.value)}
-                        rows={3}
-                        disabled={disableEdit}
-                      />
-                    </CardContent>
-                  </Card>
-                )}
+                                {/* Render component inputs for multi-component observations */}
+                                {hasComponents &&
+                                  renderComponentInputs(
+                                    definition,
+                                    observationData,
+                                    index,
+                                  )}
+                              </div>
+                            );
+                          })}
+
+                          {/* Add button for multiple observations */}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setObservations((prev) => {
+                                const currentList = prev[definition.id] || [];
+                                return {
+                                  ...prev,
+                                  [definition.id]: [
+                                    ...currentList,
+                                    {
+                                      id: "",
+                                      value: "",
+                                      unit:
+                                        definition.permitted_unit?.code || "",
+                                      status: ObservationStatus.AMENDED,
+                                      components: {},
+                                    },
+                                  ],
+                                };
+                              });
+                            }}
+                            disabled={disableEdit}
+                          >
+                            <PlusCircle className="size-4 mr-2" />
+                            {t("add_another_result")}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+
+                <Card className="mb-4 shadow-none rounded-lg border-gray-200 bg-gray-50">
+                  <CardContent className="p-4 space-y-2">
+                    <Label
+                      htmlFor="conclusion"
+                      className="text-base font-semibold text-gray-950"
+                    >
+                      {t("conclusion")}
+                    </Label>
+                    <textarea
+                      id="conclusion"
+                      className="w-full field-sizing-content focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 rounded-lg border border-gray-300 p-2"
+                      placeholder={t("enter_conclusion")}
+                      value={conclusion}
+                      onChange={(e) => setConclusion(e.target.value)}
+                      rows={3}
+                      disabled={disableEdit}
+                    />
+                  </CardContent>
+                </Card>
 
                 <div className="space-y-4">
                   {fullReport?.status ===
@@ -1206,7 +1244,7 @@ export function DiagnosticReportForm({
                   )}
                 </div>
               </div>
-            ) : (
+            ) : allAdReportCodesUsed ? null : (
               <div className="space-y-4 bg-gray-50 rounded-lg p-4">
                 <div className="text-gray-500 flex justify-center items-center">
                   <p className="mt-2 text-sm text-gray-500 text-center">
@@ -1216,49 +1254,44 @@ export function DiagnosticReportForm({
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 justify-center">
-                  {activityDefinition?.diagnostic_report_codes &&
-                    activityDefinition.diagnostic_report_codes.length > 0 && (
-                      <div className="flex-1 min-w-0">
-                        <Select
-                          value={selectedReportCode?.code}
-                          onValueChange={(value) => {
-                            const code =
-                              activityDefinition.diagnostic_report_codes?.find(
-                                (c) => c.code === value,
-                              );
-                            setSelectedReportCode(code || null);
-                          }}
-                          disabled={!hasCollectedSpecimens || disableEdit}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue
-                              placeholder={t("select_diagnostic_report_type")}
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {activityDefinition.diagnostic_report_codes.map(
-                              (code) => (
-                                <SelectItem key={code.code} value={code.code}>
-                                  <div className="flex flex-col">
-                                    <span className="truncate">
-                                      {code.display} ({code.code})
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              ),
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
+                  {hasAdReportCodes && (
+                    <div className="flex-1 min-w-0">
+                      <Select
+                        value={selectedReportCode?.code}
+                        onValueChange={(value) => {
+                          const code = availableReportCodes.find(
+                            (c) => c.code === value,
+                          );
+                          setSelectedReportCode(code || null);
+                        }}
+                        disabled={!hasCollectedSpecimens || disableEdit}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue
+                            placeholder={t("select_diagnostic_report_type")}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableReportCodes.map((code) => (
+                            <SelectItem key={code.code} value={code.code}>
+                              <div className="flex flex-col">
+                                <span className="truncate">
+                                  {code.display} ({code.code})
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <Button
                     onClick={handleCreateReport}
                     disabled={
                       disableEdit ||
                       isCreatingReport ||
                       !hasCollectedSpecimens ||
-                      (!!activityDefinition?.diagnostic_report_codes?.length &&
-                        !selectedReportCode)
+                      (hasAdReportCodes && !selectedReportCode)
                     }
                     className="w-full sm:w-auto sm:shrink-0"
                   >
