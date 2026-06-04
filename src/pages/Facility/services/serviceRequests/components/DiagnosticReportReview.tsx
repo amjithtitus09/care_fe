@@ -51,18 +51,54 @@ interface DiagnosticReportReviewProps {
   disableEdit: boolean;
 }
 
+// Renders a review card for *every* diagnostic report attached to the service
+// request. Each report manages its own data fetching and approval state via
+// `DiagnosticReportReviewItem`, so a finalized report and an in-progress one can
+// be shown side by side (the core "multiple diagnostic reports" requirement).
 export function DiagnosticReportReview({
   facilityId,
   patientId,
   diagnosticReports,
   disableEdit,
 }: DiagnosticReportReviewProps) {
+  if (!diagnosticReports.length) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-3">
+      {diagnosticReports.map((report) => (
+        <DiagnosticReportReviewItem
+          key={report.id}
+          facilityId={facilityId}
+          patientId={patientId}
+          report={report}
+          disableEdit={disableEdit}
+        />
+      ))}
+    </div>
+  );
+}
+
+interface DiagnosticReportReviewItemProps {
+  facilityId: string;
+  patientId: string;
+  report: DiagnosticReportRead;
+  disableEdit: boolean;
+}
+
+function DiagnosticReportReviewItem({
+  facilityId,
+  patientId,
+  report,
+  disableEdit,
+}: DiagnosticReportReviewItemProps) {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(true);
   const [conclusion, setConclusion] = useState<string>("");
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const queryClient = useQueryClient();
-  const latestReport = diagnosticReports[0];
+  const latestReport = report;
 
   // Fetch the full diagnostic report to get observations
   const { data: fullReport, isLoading: isLoadingReport } = useQuery({
