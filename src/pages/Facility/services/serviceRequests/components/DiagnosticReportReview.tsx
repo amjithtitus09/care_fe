@@ -54,7 +54,6 @@ interface DiagnosticReportReviewProps {
 export function DiagnosticReportReview({
   facilityId,
   patientId,
-  serviceRequestId,
   diagnosticReports,
   disableEdit,
 }: DiagnosticReportReviewProps) {
@@ -69,7 +68,6 @@ export function DiagnosticReportReview({
           key={report.id}
           facilityId={facilityId}
           patientId={patientId}
-          serviceRequestId={serviceRequestId}
           report={report}
           disableEdit={disableEdit}
         />
@@ -81,7 +79,6 @@ export function DiagnosticReportReview({
 interface DiagnosticReportReviewCardProps {
   facilityId: string;
   patientId: string;
-  serviceRequestId: string;
   report: DiagnosticReportRead;
   disableEdit: boolean;
 }

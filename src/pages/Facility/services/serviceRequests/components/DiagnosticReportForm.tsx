@@ -143,7 +143,20 @@ export function DiagnosticReportForm({
     [diagnosticReports],
   );
 
-  // Activity Definition codes still available to start a new report for.
+  // Codes whose DiagnosticReport on this SR has already been finalized.
+  // A code is "locked" only once its report is final; drafts must still
+  // be reachable so the user can continue editing them.
+  const finalizedCodes = useMemo(
+    () =>
+      diagnosticReports
+        .filter((report) => report.status === DiagnosticReportStatus.final)
+        .map((report) => report.code?.code)
+        .filter((code): code is string => !!code),
+    [diagnosticReports],
+  );
+
+  // Activity Definition codes still available to start a NEW draft for
+  // (i.e. no DiagnosticReport exists yet for that code on this SR).
   const availableCodes = useMemo<Code[]>(
     () =>
       activityDefinition?.diagnostic_report_codes?.filter(
@@ -151,9 +164,6 @@ export function DiagnosticReportForm({
       ) ?? [],
     [activityDefinition?.diagnostic_report_codes, usedCodes],
   );
-
-  const adHasCodes = !!activityDefinition?.diagnostic_report_codes?.length;
-  const allCodesUsed = adHasCodes && availableCodes.length === 0;
 
   // The non-final drafts that the user can still edit.
   const draftReports = useMemo(
@@ -163,6 +173,26 @@ export function DiagnosticReportForm({
       ),
     [diagnosticReports],
   );
+
+  // Every AD diagnostic-report code that does NOT yet have a FINAL report,
+  // i.e. codes the user can act on right now — either to start a new draft
+  // or to continue an existing one. Drives the create-panel dropdown so
+  // abandoned drafts (Findings #1 and #2) remain reachable from the form.
+  const selectableCodes = useMemo<Code[]>(
+    () =>
+      activityDefinition?.diagnostic_report_codes?.filter(
+        (code) => !finalizedCodes.includes(code.code),
+      ) ?? [],
+    [activityDefinition?.diagnostic_report_codes, finalizedCodes],
+  );
+
+  const adHasCodes = !!activityDefinition?.diagnostic_report_codes?.length;
+  // "All codes used" empty state is reserved for the genuinely done case:
+  // every AD code has a FINAL report (no draft to continue, nothing new to
+  // start). With drafts still open, we fall through to the create panel so
+  // they can be selected and finalized (review finding #2).
+  const allCodesUsed =
+    adHasCodes && availableCodes.length === 0 && draftReports.length === 0;
 
   // Pick the draft the form is currently editing:
   //   1. If the user has chosen a code, use the draft for that code.
@@ -226,8 +256,15 @@ export function DiagnosticReportForm({
           patient_external_id: patientId,
         },
       }),
-      onSuccess: () => {
+      // Snap the form into editing the just-created report so a fast user
+      // (pick A → Create → switch to B before the response lands) does not
+      // end up viewing the create panel for B while their A draft sits
+      // orphaned (review finding #3). The API response is the new report.
+      onSuccess: (response: DiagnosticReportRead) => {
         toast.success(t("diagnostic_report_created_successfully"));
+        if (response?.code) {
+          setSelectedReportCode(response.code);
+        }
         queryClient.invalidateQueries({
           queryKey: ["serviceRequest"],
         });
@@ -515,12 +552,18 @@ export function DiagnosticReportForm({
 
   function handleCreateReport() {
     // Don't create a duplicate draft for the currently selected code.
+    // With the unified "continue draft / start new" dropdown, picking an
+    // existing draft's code already drives `latestReport` to that draft
+    // (so `hasReport` becomes true and we render the editing UI instead
+    // of the create panel). This guard also covers the case where the
+    // user clicks Create while a single draft is auto-selected.
     if (hasReport) {
       return;
     }
 
     // When the AD has codes, a code must be selected before creation
-    // and that code must still be available.
+    // and that code must still be available (i.e. no DiagnosticReport
+    // exists for it yet — "continue draft" entries are handled above).
     if (adHasCodes) {
       if (!selectedReportCode) {
         return;
@@ -1288,7 +1331,7 @@ export function DiagnosticReportForm({
                       <Select
                         value={selectedReportCode?.code}
                         onValueChange={(value) => {
-                          const code = availableCodes.find(
+                          const code = selectableCodes.find(
                             (c) => c.code === value,
                           );
                           setSelectedReportCode(code || null);
@@ -1301,15 +1344,24 @@ export function DiagnosticReportForm({
                           />
                         </SelectTrigger>
                         <SelectContent>
-                          {availableCodes.map((code) => (
-                            <SelectItem key={code.code} value={code.code}>
-                              <div className="flex flex-col">
-                                <span className="truncate">
-                                  {code.display} ({code.code})
-                                </span>
-                              </div>
-                            </SelectItem>
-                          ))}
+                          {selectableCodes.map((code) => {
+                            const isDraft = usedCodes.includes(code.code);
+                            return (
+                              <SelectItem key={code.code} value={code.code}>
+                                <div className="flex flex-col">
+                                  <span className="truncate">
+                                    {isDraft
+                                      ? t("continue_draft_for", {
+                                          code: code.display ?? code.code,
+                                        })
+                                      : t("start_report_for", {
+                                          code: code.display ?? code.code,
+                                        })}
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
                         </SelectContent>
                       </Select>
                     </div>
