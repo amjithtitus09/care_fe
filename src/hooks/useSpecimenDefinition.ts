@@ -1,24 +1,22 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
+import { useAuditLogger } from './useAuditLogger';
 import { updateSpecimenDefinitionAPI } from '../services/api';
 
 export const useSpecimenDefinition = () => {
-  const queryClient = useQueryClient();
+  const auditLogger = useAuditLogger();
 
   const updateSpecimenDefinition = useMutation(
     async (data: { slug: string; name: string }) => {
-      return await updateSpecimenDefinitionAPI(data);
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['specimenDefinitions']);
-      },
-      onError: (error) => {
-        console.error('Failed to update specimen definition:', error);
-      },
+      try {
+        const response = await updateSpecimenDefinitionAPI(data);
+        auditLogger.log('Slug update attempt', { slug: data.slug, success: true });
+        return response;
+      } catch (error: any) {
+        auditLogger.log('Slug update attempt', { slug: data.slug, success: false, error: error.message });
+        throw error;
+      }
     }
   );
 
-  return {
-    updateSpecimenDefinition: updateSpecimenDefinition.mutateAsync,
-  };
+  return { updateSpecimenDefinition };
 };
