@@ -9,7 +9,7 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -132,10 +132,42 @@ export function DiagnosticReportForm({
   const [conclusion, setConclusion] = useState<string>("");
   const queryClient = useQueryClient();
 
-  // Get the latest report if any exists
-  const latestReport =
-    diagnosticReports.length > 0 ? diagnosticReports[0] : null;
-  const hasReport = !!latestReport;
+  // The "active" report being edited is the first non-final one (preliminary,
+  // partial, registered, modified). Each diagnostic-report code on the AD
+  // gets its own report, so finalized reports are no longer editable here.
+  const activeReport = useMemo(
+    () =>
+      diagnosticReports.find(
+        (report) => report.status !== DiagnosticReportStatus.final,
+      ) ?? null,
+    [diagnosticReports],
+  );
+  const hasReport = !!activeReport;
+
+  // Codes already consumed by an existing diagnostic report on this SR.
+  const usedReportCodes = useMemo(
+    () =>
+      new Set(
+        diagnosticReports
+          .map((report) => report.code?.code)
+          .filter((code): code is string => !!code),
+      ),
+    [diagnosticReports],
+  );
+
+  // Codes still available to create a new diagnostic report for.
+  const availableReportCodes = useMemo(
+    () =>
+      (activityDefinition?.diagnostic_report_codes ?? []).filter(
+        (code) => !usedReportCodes.has(code.code),
+      ),
+    [activityDefinition?.diagnostic_report_codes, usedReportCodes],
+  );
+
+  const adReportCodesCount =
+    activityDefinition?.diagnostic_report_codes?.length ?? 0;
+  const selectedCodeAlreadyUsed =
+    !!selectedReportCode && usedReportCodes.has(selectedReportCode.code);
 
   // Check if all required specimens are collected
   const hasCollectedSpecimens =
@@ -144,14 +176,14 @@ export function DiagnosticReportForm({
 
   // Fetch the full diagnostic report to get observations
   const { data: fullReport, isLoading: isLoadingReport } = useQuery({
-    queryKey: ["diagnosticReport", latestReport?.id],
+    queryKey: ["diagnosticReport", activeReport?.id],
     queryFn: query(diagnosticReportApi.retrieveDiagnosticReport, {
       pathParams: {
         patient_external_id: patientId,
-        external_id: latestReport?.id || "",
+        external_id: activeReport?.id || "",
       },
     }),
-    enabled: !!latestReport?.id,
+    enabled: !!activeReport?.id,
   });
 
   // Query to fetch files for the diagnostic report
@@ -187,6 +219,9 @@ export function DiagnosticReportForm({
         queryClient.invalidateQueries({
           queryKey: ["diagnosticReport"],
         });
+        queryClient.invalidateQueries({
+          queryKey: ["diagnosticReports", serviceRequestId],
+        });
       },
       onError: (err: any) => {
         toast.error(
@@ -195,15 +230,20 @@ export function DiagnosticReportForm({
       },
     });
 
-  // Effect to handle diagnostic reports changes
+  // Effect to handle diagnostic reports / active report changes
   useEffect(() => {
-    const latestReport = diagnosticReports[0];
-    if (latestReport) {
-      // If we have a new report, update the UI accordingly
-      setSelectedReportCode(latestReport.code || null);
+    if (activeReport) {
+      // Sync the dropdown with the report currently being edited.
+      setSelectedReportCode(activeReport.code || null);
       setIsExpanded(true);
+    } else {
+      // No in-progress report — clear stale state from a previous active
+      // report so the user can pick the next code cleanly.
+      setSelectedReportCode(null);
+      setObservations({});
+      setConclusion("");
     }
-  }, [diagnosticReports]);
+  }, [activeReport]);
 
   // Effect to handle fullReport changes
   useEffect(() => {
@@ -219,7 +259,7 @@ export function DiagnosticReportForm({
       mutationFn: mutate(observationApi.upsertObservations, {
         pathParams: {
           patient_external_id: patientId,
-          external_id: latestReport?.id || "",
+          external_id: activeReport?.id || "",
         },
       }),
       onSuccess: () => {
@@ -228,7 +268,7 @@ export function DiagnosticReportForm({
           queryKey: ["serviceRequest", serviceRequestId],
         });
         queryClient.invalidateQueries({
-          queryKey: ["diagnosticReport", latestReport?.id],
+          queryKey: ["diagnosticReport", activeReport?.id],
         });
       },
       onError: (err: any) => {
@@ -243,15 +283,25 @@ export function DiagnosticReportForm({
       mutationFn: mutate(diagnosticReportApi.updateDiagnosticReport, {
         pathParams: {
           patient_external_id: patientId,
-          external_id: latestReport?.id || "",
+          external_id: activeReport?.id || "",
         },
       }),
       onSuccess: () => {
         toast.success(t("conclusion_updated_successfully"));
         queryClient.invalidateQueries({
-          queryKey: ["diagnosticReport", latestReport?.id],
+          queryKey: ["diagnosticReport", activeReport?.id],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["serviceRequest"],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["diagnosticReports", serviceRequestId],
         });
         setIsExpanded(false);
+        // Note: When the report is finalized via DiagnosticReportReview, the
+        // SR query invalidation drops it out of `activeReport`; the
+        // useEffect on [activeReport] then clears local form state so the
+        // user can immediately pick the next available code.
       },
       onError: () => {
         toast.success(t("failed_to_update_conclusion"));
@@ -266,7 +316,7 @@ export function DiagnosticReportForm({
     allowNameFallback: false,
     onUpload: () => {
       queryClient.invalidateQueries({
-        queryKey: ["diagnosticReport", latestReport?.id],
+        queryKey: ["diagnosticReport", activeReport?.id],
       });
     },
     compress: false,
@@ -468,10 +518,19 @@ export function DiagnosticReportForm({
   }
 
   function handleCreateReport() {
-    // Only create a new report if no reports exist
+    // Only create a new report if there is no in-progress report.
     if (!hasReport) {
       if (!hasCollectedSpecimens) {
         toast.error(t("specimen_collection_required"));
+        return;
+      }
+
+      if (adReportCodesCount > 0 && !selectedReportCode) {
+        return;
+      }
+
+      if (selectedCodeAlreadyUsed) {
+        toast.error(t("diagnostic_report_code_already_used"));
         return;
       }
 
@@ -810,6 +869,19 @@ export function DiagnosticReportForm({
 
   const isSubmitting =
     isCreatingReport || isUpsertingObservations || isUpdatingReport;
+
+  // If the AD declares one or more diagnostic-report codes and they have all
+  // been used by existing reports (none of which are still in-progress),
+  // there is nothing for this form to do — finalized reports are rendered by
+  // DiagnosticReportReview in the parent. Keep the legacy single-code path
+  // (no AD codes declared) untouched.
+  if (
+    !hasReport &&
+    adReportCodesCount > 0 &&
+    availableReportCodes.length === 0
+  ) {
+    return null;
+  }
 
   // Show loading state while fetching the report
   if (hasReport && isLoadingReport) {
@@ -1216,49 +1288,53 @@ export function DiagnosticReportForm({
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 justify-center">
-                  {activityDefinition?.diagnostic_report_codes &&
-                    activityDefinition.diagnostic_report_codes.length > 0 && (
-                      <div className="flex-1 min-w-0">
-                        <Select
-                          value={selectedReportCode?.code}
-                          onValueChange={(value) => {
-                            const code =
-                              activityDefinition.diagnostic_report_codes?.find(
-                                (c) => c.code === value,
-                              );
-                            setSelectedReportCode(code || null);
-                          }}
-                          disabled={!hasCollectedSpecimens || disableEdit}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue
-                              placeholder={t("select_diagnostic_report_type")}
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {activityDefinition.diagnostic_report_codes.map(
-                              (code) => (
-                                <SelectItem key={code.code} value={code.code}>
-                                  <div className="flex flex-col">
-                                    <span className="truncate">
-                                      {code.display} ({code.code})
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              ),
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
+                  {adReportCodesCount > 0 && (
+                    <div className="flex-1 min-w-0">
+                      <Select
+                        value={selectedReportCode?.code}
+                        onValueChange={(value) => {
+                          const code = availableReportCodes.find(
+                            (c) => c.code === value,
+                          );
+                          setSelectedReportCode(code || null);
+                        }}
+                        disabled={
+                          !hasCollectedSpecimens ||
+                          disableEdit ||
+                          availableReportCodes.length === 0
+                        }
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue
+                            placeholder={
+                              availableReportCodes.length === 0
+                                ? t("all_diagnostic_report_codes_used")
+                                : t("select_diagnostic_report_type")
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableReportCodes.map((code) => (
+                            <SelectItem key={code.code} value={code.code}>
+                              <div className="flex flex-col">
+                                <span className="truncate">
+                                  {code.display} ({code.code})
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <Button
                     onClick={handleCreateReport}
                     disabled={
                       disableEdit ||
                       isCreatingReport ||
                       !hasCollectedSpecimens ||
-                      (!!activityDefinition?.diagnostic_report_codes?.length &&
-                        !selectedReportCode)
+                      (adReportCodesCount > 0 && !selectedReportCode) ||
+                      selectedCodeAlreadyUsed
                     }
                     className="w-full sm:w-auto sm:shrink-0"
                   >

@@ -322,8 +322,25 @@ export default function ServiceRequestShow({
     }
   };
 
-  const isFinal =
-    request?.diagnostic_reports?.[0]?.status === DiagnosticReportStatus.final;
+  // For multi-report support: an SR is "final" only when every diagnostic
+  // report on it is final AND no more reports remain to be created (every AD
+  // diagnostic-report code has been consumed). The legacy single-code path
+  // (no AD codes, but a single report) collapses to checking the one report.
+  const adReportCodesAll = activityDefinition?.diagnostic_report_codes ?? [];
+  const usedReportCodesAll = new Set(
+    diagnosticReports
+      .map((report) => report.code?.code)
+      .filter((code): code is string => !!code),
+  );
+  const remainingReportCodes = adReportCodesAll.filter(
+    (code) => !usedReportCodesAll.has(code.code),
+  );
+  const allReportsFinal =
+    diagnosticReports.length > 0 &&
+    diagnosticReports.every(
+      (report) => report.status === DiagnosticReportStatus.final,
+    );
+  const isFinal = allReportsFinal && remainingReportCodes.length === 0;
 
   const canMarkAsComplete =
     isFinal ||
@@ -596,30 +613,59 @@ export default function ServiceRequestShow({
                 </DropdownMenu>
               </div>
             )}
-            {(!diagnosticReports.length ||
-              diagnosticReports[0]?.status !==
-                DiagnosticReportStatus.final) && (
-              <DiagnosticReportForm
-                patientId={request.encounter.patient.id}
-                facilityId={facilityId}
-                serviceRequestId={serviceRequestId}
-                observationDefinitions={observationRequirements}
-                diagnosticReports={diagnosticReports}
-                activityDefinition={activityDefinition}
-                specimens={request.specimens || []}
-                disableEdit={disableEdit}
-              />
-            )}
+            {(() => {
+              // Show the create/edit form when either:
+              //   (a) there is an in-progress (non-final) report to edit, or
+              //   (b) the AD declares diagnostic-report codes and at least one
+              //       has not been used yet (multi-report flow), or
+              //   (c) the AD declares no diagnostic-report codes and no report
+              //       has been created yet (legacy single-code path).
+              const adReportCodes =
+                activityDefinition.diagnostic_report_codes ?? [];
+              const usedCodes = new Set(
+                diagnosticReports
+                  .map((report) => report.code?.code)
+                  .filter((code): code is string => !!code),
+              );
+              const hasInProgressReport = diagnosticReports.some(
+                (report) => report.status !== DiagnosticReportStatus.final,
+              );
+              const hasAvailableCode = adReportCodes.some(
+                (code) => !usedCodes.has(code.code),
+              );
+              const noAdCodesNoReportYet =
+                adReportCodes.length === 0 && diagnosticReports.length === 0;
+              const showForm =
+                hasInProgressReport || hasAvailableCode || noAdCodesNoReportYet;
+
+              return showForm ? (
+                <DiagnosticReportForm
+                  patientId={request.encounter.patient.id}
+                  facilityId={facilityId}
+                  serviceRequestId={serviceRequestId}
+                  observationDefinitions={observationRequirements}
+                  diagnosticReports={diagnosticReports}
+                  activityDefinition={activityDefinition}
+                  specimens={request.specimens || []}
+                  disableEdit={disableEdit}
+                />
+              ) : null;
+            })()}
           </div>
 
           {diagnosticReports.length > 0 && (
-            <DiagnosticReportReview
-              facilityId={facilityId}
-              patientId={request.encounter.patient.id}
-              serviceRequestId={serviceRequestId}
-              diagnosticReports={diagnosticReports}
-              disableEdit={disableEdit}
-            />
+            <div className="space-y-3">
+              {diagnosticReports.map((report) => (
+                <DiagnosticReportReview
+                  key={report.id}
+                  facilityId={facilityId}
+                  patientId={request.encounter.patient.id}
+                  serviceRequestId={serviceRequestId}
+                  diagnosticReport={report}
+                  disableEdit={disableEdit}
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>
