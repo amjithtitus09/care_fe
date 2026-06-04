@@ -4,6 +4,7 @@ import { useLocationChange } from "raviger";
 import { Suspense, useEffect } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
+import { resolveToastPosition } from "@/lib/toastPosition";
 
 import { AppUpdateNotifier } from "@/components/Common/AppUpdateNotifier";
 import Loading from "@/components/Common/Loading";
@@ -51,7 +52,9 @@ const App = () => {
                   </AuthUserProvider>
                 </OverrideProvider>
                 <Toaster
-                  position="top-center"
+                  position={resolveToastPosition(
+                    import.meta.env.REACT_TOAST_POSITION,
+                  )}
                   theme="light"
                   richColors
                   expand
