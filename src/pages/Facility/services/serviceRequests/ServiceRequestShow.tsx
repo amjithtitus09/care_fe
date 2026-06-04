@@ -62,7 +62,6 @@ import { Classification } from "@/types/emr/activityDefinition/activityDefinitio
 import { DiagnosticReportForm } from "./components/DiagnosticReportForm";
 import { DiagnosticReportReview } from "./components/DiagnosticReportReview";
 import { MultiQRCodePrintSheet } from "./components/MultiQRCodePrintSheet";
-import { ObservationHistorySheet } from "./components/ObservationHistorySheet";
 import { ServiceRequestDetails } from "./components/ServiceRequestDetails";
 import { SpecimenForm } from "./components/SpecimenForm";
 import { SpecimenHistorySheet } from "./components/SpecimenHistorySheet";
@@ -341,6 +340,9 @@ export default function ServiceRequestShow({
       (report) => report.status === DiagnosticReportStatus.final,
     );
   const isFinal = allReportsFinal && remainingReportCodes.length === 0;
+  const finalReports = diagnosticReports.filter(
+    (report) => report.status === DiagnosticReportStatus.final,
+  );
 
   const canMarkAsComplete =
     isFinal ||
@@ -365,24 +367,51 @@ export default function ServiceRequestShow({
             </BackButton>
 
             <div className="flex items-end gap-2">
-              {canShowCompleteCta && (
+              {canShowCompleteCta && isFinal && (
                 <div className="flex items-center gap-2">
-                  <>
-                    {isFinal && (
-                      <Button
-                        variant="primary"
-                        className="font-semibold"
-                        onClick={() =>
-                          navigate(
-                            `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${request.diagnostic_reports[0].id}`,
-                          )
-                        }
-                      >
-                        {t("view_report")}
-                        <ShortcutBadge actionId="view-report" />
-                      </Button>
-                    )}
-                  </>
+                  {finalReports.length === 1 ? (
+                    <Button
+                      variant="primary"
+                      className="font-semibold"
+                      onClick={() =>
+                        navigate(
+                          `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${finalReports[0].id}`,
+                        )
+                      }
+                    >
+                      {t("view_report")}
+                      <ShortcutBadge actionId="view-report" />
+                    </Button>
+                  ) : (
+                    // Multi-report SR: render a menu so every finalized
+                    // report is reachable from the header (one entry per
+                    // report, labelled by code.display).
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="primary" className="font-semibold">
+                          {t("view_report")}
+                          <ShortcutBadge actionId="view-report" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {finalReports.map((report) => (
+                          <DropdownMenuItem
+                            key={report.id}
+                            onSelect={() =>
+                              navigate(
+                                `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${report.id}`,
+                              )
+                            }
+                          >
+                            {t("view_report")}:{" "}
+                            {report.code?.display ||
+                              report.code?.code ||
+                              t("diagnostic_report")}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               )}
               {request.status !== Status.completed &&
@@ -587,30 +616,9 @@ export default function ServiceRequestShow({
             {observationRequirements.length > 0 && (
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold">{t("test_results")}</h2>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreVertical className="size-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <ObservationHistorySheet
-                      patientId={request.encounter.patient.id}
-                      diagnosticReportId={
-                        request.diagnostic_reports[0]?.id || ""
-                      }
-                    >
-                      <DropdownMenuItem
-                        onSelect={(e) => e.preventDefault()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                      >
-                        {t("view_observation_history")}
-                      </DropdownMenuItem>
-                    </ObservationHistorySheet>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {/* Per-report observation-history affordance lives inside
+                    each DiagnosticReportReview card so multi-report SRs
+                    can inspect history for every report, not just [0]. */}
               </div>
             )}
             {(() => {

@@ -5,6 +5,7 @@ import {
   ChevronsUpDown,
   ExternalLink,
   FileCheck2,
+  History,
 } from "lucide-react";
 import { Link } from "raviger";
 import { useEffect, useState } from "react";
@@ -42,6 +43,8 @@ import diagnosticReportApi from "@/types/emr/diagnosticReport/diagnosticReportAp
 import { ObservationStatus } from "@/types/emr/observation/observation";
 import { FileReadMinimal } from "@/types/files/file";
 import fileApi from "@/types/files/fileApi";
+
+import { ObservationHistorySheet } from "./ObservationHistorySheet";
 
 interface DiagnosticReportReviewProps {
   facilityId: string;
@@ -197,6 +200,24 @@ export function DiagnosticReportReview({
                     {t(fullReport.status)}
                   </Badge>
                 )}
+                {/* Per-report observation-history affordance: each report
+                    on a multi-report SR exposes its own history sheet so
+                    reports 2..N are not silently dropped. */}
+                <ObservationHistorySheet
+                  patientId={patientId}
+                  diagnosticReportId={diagnosticReport.id}
+                >
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-10 border border-gray-400 bg-white shadow p-4"
+                    title={t("view_observation_history")}
+                    aria-label={t("view_observation_history")}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <History className="size-5" />
+                  </Button>
+                </ObservationHistorySheet>
                 <Button
                   variant="ghost"
                   size="icon"

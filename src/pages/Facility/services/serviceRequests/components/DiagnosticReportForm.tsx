@@ -1288,7 +1288,13 @@ export function DiagnosticReportForm({
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 justify-center">
-                  {adReportCodesCount > 0 && (
+                  {/* Defense-in-depth: the diagnostic-report-code Select is
+                      only meaningful for the create flow. Even though this
+                      branch already runs only when `!hasReport`, guard
+                      explicitly so editing an in-progress report can never
+                      surface a Select whose `value` is excluded from
+                      `availableReportCodes`. */}
+                  {!hasReport && adReportCodesCount > 0 && (
                     <div className="flex-1 min-w-0">
                       <Select
                         value={selectedReportCode?.code}
