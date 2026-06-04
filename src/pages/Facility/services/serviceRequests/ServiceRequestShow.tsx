@@ -62,7 +62,6 @@ import { Classification } from "@/types/emr/activityDefinition/activityDefinitio
 import { DiagnosticReportForm } from "./components/DiagnosticReportForm";
 import { DiagnosticReportReview } from "./components/DiagnosticReportReview";
 import { MultiQRCodePrintSheet } from "./components/MultiQRCodePrintSheet";
-import { ObservationHistorySheet } from "./components/ObservationHistorySheet";
 import { ServiceRequestDetails } from "./components/ServiceRequestDetails";
 import { SpecimenForm } from "./components/SpecimenForm";
 import { SpecimenHistorySheet } from "./components/SpecimenHistorySheet";
@@ -322,8 +321,28 @@ export default function ServiceRequestShow({
     }
   };
 
-  const isFinal =
-    request?.diagnostic_reports?.[0]?.status === DiagnosticReportStatus.final;
+  // For multi-report support: an SR is "final" only when every diagnostic
+  // report on it is final AND no more reports remain to be created (every AD
+  // diagnostic-report code has been consumed). The legacy single-code path
+  // (no AD codes, but a single report) collapses to checking the one report.
+  const adReportCodesAll = activityDefinition?.diagnostic_report_codes ?? [];
+  const usedReportCodesAll = new Set(
+    diagnosticReports
+      .map((report) => report.code?.code)
+      .filter((code): code is string => !!code),
+  );
+  const remainingReportCodes = adReportCodesAll.filter(
+    (code) => !usedReportCodesAll.has(code.code),
+  );
+  const allReportsFinal =
+    diagnosticReports.length > 0 &&
+    diagnosticReports.every(
+      (report) => report.status === DiagnosticReportStatus.final,
+    );
+  const isFinal = allReportsFinal && remainingReportCodes.length === 0;
+  const finalReports = diagnosticReports.filter(
+    (report) => report.status === DiagnosticReportStatus.final,
+  );
 
   const canMarkAsComplete =
     isFinal ||
@@ -348,24 +367,51 @@ export default function ServiceRequestShow({
             </BackButton>
 
             <div className="flex items-end gap-2">
-              {canShowCompleteCta && (
+              {canShowCompleteCta && isFinal && (
                 <div className="flex items-center gap-2">
-                  <>
-                    {isFinal && (
-                      <Button
-                        variant="primary"
-                        className="font-semibold"
-                        onClick={() =>
-                          navigate(
-                            `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${request.diagnostic_reports[0].id}`,
-                          )
-                        }
-                      >
-                        {t("view_report")}
-                        <ShortcutBadge actionId="view-report" />
-                      </Button>
-                    )}
-                  </>
+                  {finalReports.length === 1 ? (
+                    <Button
+                      variant="primary"
+                      className="font-semibold"
+                      onClick={() =>
+                        navigate(
+                          `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${finalReports[0].id}`,
+                        )
+                      }
+                    >
+                      {t("view_report")}
+                      <ShortcutBadge actionId="view-report" />
+                    </Button>
+                  ) : (
+                    // Multi-report SR: render a menu so every finalized
+                    // report is reachable from the header (one entry per
+                    // report, labelled by code.display).
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="primary" className="font-semibold">
+                          {t("view_report")}
+                          <ShortcutBadge actionId="view-report" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {finalReports.map((report) => (
+                          <DropdownMenuItem
+                            key={report.id}
+                            onSelect={() =>
+                              navigate(
+                                `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${report.id}`,
+                              )
+                            }
+                          >
+                            {t("view_report")}:{" "}
+                            {report.code?.display ||
+                              report.code?.code ||
+                              t("diagnostic_report")}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               )}
               {request.status !== Status.completed &&
@@ -570,56 +616,64 @@ export default function ServiceRequestShow({
             {observationRequirements.length > 0 && (
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold">{t("test_results")}</h2>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreVertical className="size-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <ObservationHistorySheet
-                      patientId={request.encounter.patient.id}
-                      diagnosticReportId={
-                        request.diagnostic_reports[0]?.id || ""
-                      }
-                    >
-                      <DropdownMenuItem
-                        onSelect={(e) => e.preventDefault()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                      >
-                        {t("view_observation_history")}
-                      </DropdownMenuItem>
-                    </ObservationHistorySheet>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {/* Per-report observation-history affordance lives inside
+                    each DiagnosticReportReview card so multi-report SRs
+                    can inspect history for every report, not just [0]. */}
               </div>
             )}
-            {(!diagnosticReports.length ||
-              diagnosticReports[0]?.status !==
-                DiagnosticReportStatus.final) && (
-              <DiagnosticReportForm
-                patientId={request.encounter.patient.id}
-                facilityId={facilityId}
-                serviceRequestId={serviceRequestId}
-                observationDefinitions={observationRequirements}
-                diagnosticReports={diagnosticReports}
-                activityDefinition={activityDefinition}
-                specimens={request.specimens || []}
-                disableEdit={disableEdit}
-              />
-            )}
+            {(() => {
+              // Show the create/edit form when either:
+              //   (a) there is an in-progress (non-final) report to edit, or
+              //   (b) the AD declares diagnostic-report codes and at least one
+              //       has not been used yet (multi-report flow), or
+              //   (c) the AD declares no diagnostic-report codes and no report
+              //       has been created yet (legacy single-code path).
+              const adReportCodes =
+                activityDefinition.diagnostic_report_codes ?? [];
+              const usedCodes = new Set(
+                diagnosticReports
+                  .map((report) => report.code?.code)
+                  .filter((code): code is string => !!code),
+              );
+              const hasInProgressReport = diagnosticReports.some(
+                (report) => report.status !== DiagnosticReportStatus.final,
+              );
+              const hasAvailableCode = adReportCodes.some(
+                (code) => !usedCodes.has(code.code),
+              );
+              const noAdCodesNoReportYet =
+                adReportCodes.length === 0 && diagnosticReports.length === 0;
+              const showForm =
+                hasInProgressReport || hasAvailableCode || noAdCodesNoReportYet;
+
+              return showForm ? (
+                <DiagnosticReportForm
+                  patientId={request.encounter.patient.id}
+                  facilityId={facilityId}
+                  serviceRequestId={serviceRequestId}
+                  observationDefinitions={observationRequirements}
+                  diagnosticReports={diagnosticReports}
+                  activityDefinition={activityDefinition}
+                  specimens={request.specimens || []}
+                  disableEdit={disableEdit}
+                />
+              ) : null;
+            })()}
           </div>
 
           {diagnosticReports.length > 0 && (
-            <DiagnosticReportReview
-              facilityId={facilityId}
-              patientId={request.encounter.patient.id}
-              serviceRequestId={serviceRequestId}
-              diagnosticReports={diagnosticReports}
-              disableEdit={disableEdit}
-            />
+            <div className="space-y-3">
+              {diagnosticReports.map((report) => (
+                <DiagnosticReportReview
+                  key={report.id}
+                  facilityId={facilityId}
+                  patientId={request.encounter.patient.id}
+                  serviceRequestId={serviceRequestId}
+                  diagnosticReport={report}
+                  disableEdit={disableEdit}
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>

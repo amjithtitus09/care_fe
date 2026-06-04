@@ -5,6 +5,7 @@ import {
   ChevronsUpDown,
   ExternalLink,
   FileCheck2,
+  History,
 } from "lucide-react";
 import { Link } from "raviger";
 import { useEffect, useState } from "react";
@@ -43,18 +44,20 @@ import { ObservationStatus } from "@/types/emr/observation/observation";
 import { FileReadMinimal } from "@/types/files/file";
 import fileApi from "@/types/files/fileApi";
 
+import { ObservationHistorySheet } from "./ObservationHistorySheet";
+
 interface DiagnosticReportReviewProps {
   facilityId: string;
   patientId: string;
   serviceRequestId: string;
-  diagnosticReports: DiagnosticReportRead[];
+  diagnosticReport: DiagnosticReportRead;
   disableEdit: boolean;
 }
 
 export function DiagnosticReportReview({
   facilityId,
   patientId,
-  diagnosticReports,
+  diagnosticReport,
   disableEdit,
 }: DiagnosticReportReviewProps) {
   const { t } = useTranslation();
@@ -62,18 +65,17 @@ export function DiagnosticReportReview({
   const [conclusion, setConclusion] = useState<string>("");
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const queryClient = useQueryClient();
-  const latestReport = diagnosticReports[0];
 
   // Fetch the full diagnostic report to get observations
   const { data: fullReport, isLoading: isLoadingReport } = useQuery({
-    queryKey: ["diagnosticReport", latestReport?.id],
+    queryKey: ["diagnosticReport", diagnosticReport.id],
     queryFn: query(diagnosticReportApi.retrieveDiagnosticReport, {
       pathParams: {
         patient_external_id: patientId,
-        external_id: latestReport?.id || "",
+        external_id: diagnosticReport.id,
       },
     }),
-    enabled: !!latestReport?.id,
+    enabled: !!diagnosticReport.id,
   });
 
   useEffect(() => {
@@ -102,7 +104,7 @@ export function DiagnosticReportReview({
       mutationFn: mutate(diagnosticReportApi.updateDiagnosticReport, {
         pathParams: {
           patient_external_id: patientId,
-          external_id: latestReport?.id || "",
+          external_id: diagnosticReport.id,
         },
       }),
       onSuccess: () => {
@@ -126,18 +128,12 @@ export function DiagnosticReportReview({
     });
 
   const handleApprove = () => {
-    if (latestReport) {
-      updateDiagnosticReport({
-        ...latestReport,
-        status: DiagnosticReportStatus.final,
-        conclusion,
-      });
-    }
+    updateDiagnosticReport({
+      ...diagnosticReport,
+      status: DiagnosticReportStatus.final,
+      conclusion,
+    });
   };
-
-  if (!latestReport) {
-    return null;
-  }
 
   // Show loading state while fetching the report
   if (isLoadingReport) {
@@ -204,6 +200,24 @@ export function DiagnosticReportReview({
                     {t(fullReport.status)}
                   </Badge>
                 )}
+                {/* Per-report observation-history affordance: each report
+                    on a multi-report SR exposes its own history sheet so
+                    reports 2..N are not silently dropped. */}
+                <ObservationHistorySheet
+                  patientId={patientId}
+                  diagnosticReportId={diagnosticReport.id}
+                >
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-10 border border-gray-400 bg-white shadow p-4"
+                    title={t("view_observation_history")}
+                    aria-label={t("view_observation_history")}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <History className="size-5" />
+                  </Button>
+                </ObservationHistorySheet>
                 <Button
                   variant="ghost"
                   size="icon"
