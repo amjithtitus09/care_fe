@@ -54,26 +54,60 @@ interface DiagnosticReportReviewProps {
 export function DiagnosticReportReview({
   facilityId,
   patientId,
+  serviceRequestId,
   diagnosticReports,
   disableEdit,
 }: DiagnosticReportReviewProps) {
+  if (diagnosticReports.length === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      {diagnosticReports.map((report) => (
+        <DiagnosticReportReviewCard
+          key={report.id}
+          facilityId={facilityId}
+          patientId={patientId}
+          serviceRequestId={serviceRequestId}
+          report={report}
+          disableEdit={disableEdit}
+        />
+      ))}
+    </>
+  );
+}
+
+interface DiagnosticReportReviewCardProps {
+  facilityId: string;
+  patientId: string;
+  serviceRequestId: string;
+  report: DiagnosticReportRead;
+  disableEdit: boolean;
+}
+
+function DiagnosticReportReviewCard({
+  facilityId,
+  patientId,
+  report,
+  disableEdit,
+}: DiagnosticReportReviewCardProps) {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(true);
   const [conclusion, setConclusion] = useState<string>("");
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const queryClient = useQueryClient();
-  const latestReport = diagnosticReports[0];
 
   // Fetch the full diagnostic report to get observations
   const { data: fullReport, isLoading: isLoadingReport } = useQuery({
-    queryKey: ["diagnosticReport", latestReport?.id],
+    queryKey: ["diagnosticReport", report.id],
     queryFn: query(diagnosticReportApi.retrieveDiagnosticReport, {
       pathParams: {
         patient_external_id: patientId,
-        external_id: latestReport?.id || "",
+        external_id: report.id,
       },
     }),
-    enabled: !!latestReport?.id,
+    enabled: !!report.id,
   });
 
   useEffect(() => {
@@ -102,7 +136,7 @@ export function DiagnosticReportReview({
       mutationFn: mutate(diagnosticReportApi.updateDiagnosticReport, {
         pathParams: {
           patient_external_id: patientId,
-          external_id: latestReport?.id || "",
+          external_id: report.id,
         },
       }),
       onSuccess: () => {
@@ -126,18 +160,12 @@ export function DiagnosticReportReview({
     });
 
   const handleApprove = () => {
-    if (latestReport) {
-      updateDiagnosticReport({
-        ...latestReport,
-        status: DiagnosticReportStatus.final,
-        conclusion,
-      });
-    }
+    updateDiagnosticReport({
+      ...report,
+      status: DiagnosticReportStatus.final,
+      conclusion,
+    });
   };
-
-  if (!latestReport) {
-    return null;
-  }
 
   // Show loading state while fetching the report
   if (isLoadingReport) {

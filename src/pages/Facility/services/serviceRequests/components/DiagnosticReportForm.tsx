@@ -9,7 +9,7 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -132,9 +132,57 @@ export function DiagnosticReportForm({
   const [conclusion, setConclusion] = useState<string>("");
   const queryClient = useQueryClient();
 
-  // Get the latest report if any exists
-  const latestReport =
-    diagnosticReports.length > 0 ? diagnosticReports[0] : null;
+  // Codes already used by an existing DiagnosticReport on this SR.
+  // Reports without a code (legacy single-report SRs) are ignored so the
+  // dropdown is not accidentally emptied.
+  const usedCodes = useMemo(
+    () =>
+      diagnosticReports
+        .map((report) => report.code?.code)
+        .filter((code): code is string => !!code),
+    [diagnosticReports],
+  );
+
+  // Activity Definition codes still available to start a new report for.
+  const availableCodes = useMemo<Code[]>(
+    () =>
+      activityDefinition?.diagnostic_report_codes?.filter(
+        (code) => !usedCodes.includes(code.code),
+      ) ?? [],
+    [activityDefinition?.diagnostic_report_codes, usedCodes],
+  );
+
+  const adHasCodes = !!activityDefinition?.diagnostic_report_codes?.length;
+  const allCodesUsed = adHasCodes && availableCodes.length === 0;
+
+  // The non-final drafts that the user can still edit.
+  const draftReports = useMemo(
+    () =>
+      diagnosticReports.filter(
+        (report) => report.status !== DiagnosticReportStatus.final,
+      ),
+    [diagnosticReports],
+  );
+
+  // Pick the draft the form is currently editing:
+  //   1. If the user has chosen a code, use the draft for that code.
+  //   2. Otherwise, if there is exactly one open draft, default to it
+  //      (back-compat for single-report SRs).
+  // When neither applies, `latestReport` is null and the form falls back
+  // to its "create" panel (single dropdown + create button).
+  const latestReport = useMemo(() => {
+    if (selectedReportCode) {
+      return (
+        draftReports.find(
+          (report) => report.code?.code === selectedReportCode.code,
+        ) ?? null
+      );
+    }
+    if (draftReports.length === 1) {
+      return draftReports[0];
+    }
+    return null;
+  }, [draftReports, selectedReportCode]);
   const hasReport = !!latestReport;
 
   // Check if all required specimens are collected
@@ -195,23 +243,21 @@ export function DiagnosticReportForm({
       },
     });
 
-  // Effect to handle diagnostic reports changes
+  // Effect to handle diagnostic reports changes.
+  // Only auto-select a code when there is exactly one open draft and the
+  // user has not picked a code yet. With multiple reports, leave the
+  // dropdown selection up to the user so creating another report works.
   useEffect(() => {
-    const latestReport = diagnosticReports[0];
-    if (latestReport) {
-      // If we have a new report, update the UI accordingly
-      setSelectedReportCode(latestReport.code || null);
+    if (!selectedReportCode && draftReports.length === 1) {
+      const onlyDraft = draftReports[0];
+      if (onlyDraft.code) {
+        setSelectedReportCode(onlyDraft.code);
+      }
+      setIsExpanded(true);
+    } else if (draftReports.length > 0) {
       setIsExpanded(true);
     }
-  }, [diagnosticReports]);
-
-  // Effect to handle fullReport changes
-  useEffect(() => {
-    if (fullReport) {
-      // When we get the full report details, ensure UI is in correct state
-      setSelectedReportCode(fullReport.code || null);
-    }
-  }, [fullReport]);
+  }, [draftReports, selectedReportCode]);
 
   // Upserting observations for a diagnostic report
   const { mutate: upsertObservations, isPending: isUpsertingObservations } =
@@ -468,26 +514,39 @@ export function DiagnosticReportForm({
   }
 
   function handleCreateReport() {
-    // Only create a new report if no reports exist
-    if (!hasReport) {
-      if (!hasCollectedSpecimens) {
-        toast.error(t("specimen_collection_required"));
+    // Don't create a duplicate draft for the currently selected code.
+    if (hasReport) {
+      return;
+    }
+
+    // When the AD has codes, a code must be selected before creation
+    // and that code must still be available.
+    if (adHasCodes) {
+      if (!selectedReportCode) {
         return;
       }
-
-      const category: Code = {
-        code: "LAB",
-        display: "Laboratory",
-        system: "http://terminology.hl7.org/CodeSystem/v2-0074",
-      };
-
-      createDiagnosticReport({
-        status: DiagnosticReportStatus.preliminary,
-        category,
-        service_request: serviceRequestId,
-        code: selectedReportCode || undefined,
-      });
+      if (usedCodes.includes(selectedReportCode.code)) {
+        return;
+      }
     }
+
+    if (!hasCollectedSpecimens) {
+      toast.error(t("specimen_collection_required"));
+      return;
+    }
+
+    const category: Code = {
+      code: "LAB",
+      display: "Laboratory",
+      system: "http://terminology.hl7.org/CodeSystem/v2-0074",
+    };
+
+    createDiagnosticReport({
+      status: DiagnosticReportStatus.preliminary,
+      category,
+      service_request: serviceRequestId,
+      code: selectedReportCode || undefined,
+    });
   }
 
   function handleSubmit() {
@@ -1206,6 +1265,14 @@ export function DiagnosticReportForm({
                   )}
                 </div>
               </div>
+            ) : allCodesUsed ? (
+              <div className="space-y-4 bg-gray-50 rounded-lg p-4">
+                <div className="text-gray-500 flex justify-center items-center">
+                  <p className="mt-2 text-sm text-gray-500 text-center">
+                    {t("all_diagnostic_report_codes_used")}
+                  </p>
+                </div>
+              </div>
             ) : (
               <div className="space-y-4 bg-gray-50 rounded-lg p-4">
                 <div className="text-gray-500 flex justify-center items-center">
@@ -1216,49 +1283,44 @@ export function DiagnosticReportForm({
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 justify-center">
-                  {activityDefinition?.diagnostic_report_codes &&
-                    activityDefinition.diagnostic_report_codes.length > 0 && (
-                      <div className="flex-1 min-w-0">
-                        <Select
-                          value={selectedReportCode?.code}
-                          onValueChange={(value) => {
-                            const code =
-                              activityDefinition.diagnostic_report_codes?.find(
-                                (c) => c.code === value,
-                              );
-                            setSelectedReportCode(code || null);
-                          }}
-                          disabled={!hasCollectedSpecimens || disableEdit}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue
-                              placeholder={t("select_diagnostic_report_type")}
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {activityDefinition.diagnostic_report_codes.map(
-                              (code) => (
-                                <SelectItem key={code.code} value={code.code}>
-                                  <div className="flex flex-col">
-                                    <span className="truncate">
-                                      {code.display} ({code.code})
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              ),
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
+                  {adHasCodes && (
+                    <div className="flex-1 min-w-0">
+                      <Select
+                        value={selectedReportCode?.code}
+                        onValueChange={(value) => {
+                          const code = availableCodes.find(
+                            (c) => c.code === value,
+                          );
+                          setSelectedReportCode(code || null);
+                        }}
+                        disabled={!hasCollectedSpecimens || disableEdit}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue
+                            placeholder={t("select_diagnostic_report_type")}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableCodes.map((code) => (
+                            <SelectItem key={code.code} value={code.code}>
+                              <div className="flex flex-col">
+                                <span className="truncate">
+                                  {code.display} ({code.code})
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <Button
                     onClick={handleCreateReport}
                     disabled={
                       disableEdit ||
                       isCreatingReport ||
                       !hasCollectedSpecimens ||
-                      (!!activityDefinition?.diagnostic_report_codes?.length &&
-                        !selectedReportCode)
+                      (adHasCodes && !selectedReportCode)
                     }
                     className="w-full sm:w-auto sm:shrink-0"
                   >
