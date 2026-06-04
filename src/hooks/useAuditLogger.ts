@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
 
 export const useAuditLogger = () => {
-  const log = useCallback((message: string, details: Record<string, any>) => {
-    console.log(`[Audit Log] ${message}`, details);
+  const logAudit = useCallback((message: string, data: any) => {
+    console.log(`[Audit Log] ${message}`, data);
   }, []);
 
-  return { log };
+  return { logAudit };
 };
