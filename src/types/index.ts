@@ -1,13 +1,5 @@
-// Updated type definitions to include slug field
-export interface SpecimenDefinition {
-  id: string;
+export interface SpecimenDefinitionUpdatePayload {
   name: string;
-  description: string;
-  slug: string;
-}
-
-export interface FormValues {
-  name: string;
-  description: string;
+  description?: string;
   slug: string;
 }
