@@ -1,25 +1,13 @@
-import { validateSlug } from '../utils/validation';
+import axios from 'axios';
 
 export const updateSpecimenDefinitionAPI = async (data: { name: string; slug: string }) => {
-  if (!validateSlug(data.slug)) {
-    return { ok: false, error: 'Invalid slug format' };
-  }
-
   try {
-    const response = await fetch('/api/specimen-definition', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(data)
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to update specimen definition');
-    }
-
-    return { ok: true };
+    const response = await axios.put('/api/specimen-definition', data);
+    return response.data;
   } catch (error) {
-    return { ok: false, error: error.message };
+    if (error.response?.data?.message) {
+      throw new Error(error.response.data.message);
+    }
+    throw new Error('An unexpected error occurred');
   }
 };

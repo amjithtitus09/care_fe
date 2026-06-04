@@ -2,17 +2,15 @@ import { useMutation } from '@tanstack/react-query';
 import { updateSpecimenDefinitionAPI } from '../services/api';
 
 export const useSpecimenDefinition = () => {
-  const updateSpecimenDefinition = useMutation(
-    async (data: any) => {
-      const response = await updateSpecimenDefinitionAPI(data);
-      if (!response.ok) {
-        throw new Error(response.error || 'Failed to update specimen definition');
-      }
-      return response;
-    }
-  );
+  const mutation = useMutation(updateSpecimenDefinitionAPI);
 
-  return {
-    updateSpecimenDefinition: updateSpecimenDefinition.mutateAsync
+  const updateSpecimenDefinition = async (data: { name: string; slug: string }) => {
+    try {
+      await mutation.mutateAsync(data);
+    } catch (error) {
+      throw new Error('Failed to update specimen definition');
+    }
   };
+
+  return { updateSpecimenDefinition };
 };

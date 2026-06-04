@@ -1,24 +1,30 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import SpecimenDefinitionEdit from '../pages/SpecimenDefinitionEdit';
+import { SpecimenDefinitionEdit } from '../pages/SpecimenDefinitionEdit';
 
-describe('SpecimenDefinitionEdit', () => {
-  it('renders the form correctly', () => {
-    render(<SpecimenDefinitionEdit />);
+jest.mock('../hooks/useSpecimenDefinition', () => ({
+  useSpecimenDefinition: () => ({
+    updateSpecimenDefinition: jest.fn()
+  })
+}));
 
-    expect(screen.getByTestId('slug-input')).toBeInTheDocument();
-    expect(screen.getByTestId('name-input')).toBeInTheDocument();
-    expect(screen.getByTestId('submit-button')).toBeInTheDocument();
-  });
+jest.mock('../hooks/useAuditLogger', () => ({
+  useAuditLogger: () => ({
+    logAudit: jest.fn()
+  })
+}));
 
-  it('submits the form successfully', async () => {
-    render(<SpecimenDefinitionEdit />);
+test('renders SpecimenDefinitionEdit and handles slug updates', async () => {
+  render(<SpecimenDefinitionEdit />);
 
-    fireEvent.change(screen.getByTestId('slug-input'), { target: { value: 'valid-slug' } });
-    fireEvent.change(screen.getByTestId('name-input'), { target: { value: 'Valid Name' } });
-    fireEvent.click(screen.getByTestId('submit-button'));
+  const nameInput = screen.getByTestId('name-input');
+  const slugInput = screen.getByTestId('slug-input');
+  const submitButton = screen.getByTestId('submit-button');
 
-    expect(screen.queryByTestId('slug-error')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('name-error')).not.toBeInTheDocument();
-  });
+  fireEvent.change(nameInput, { target: { value: 'Valid Name' } });
+  fireEvent.change(slugInput, { target: { value: 'valid-slug' } });
+  fireEvent.click(submitButton);
+
+  expect(screen.queryByTestId('name-error')).not.toBeInTheDocument();
+  expect(screen.queryByTestId('slug-error')).not.toBeInTheDocument();
 });

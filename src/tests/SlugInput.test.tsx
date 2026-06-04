@@ -8,28 +8,19 @@ const Wrapper: React.FC = ({ children }) => {
   return <FormProvider {...methods}>{children}</FormProvider>;
 };
 
-describe('SlugInput', () => {
-  it('renders correctly', () => {
-    render(
-      <Wrapper>
-        <SlugInput name="slug" />
-      </Wrapper>
-    );
+test('renders SlugInput and validates input', () => {
+  render(
+    <Wrapper>
+      <SlugInput name="slug" />
+    </Wrapper>
+  );
 
-    expect(screen.getByTestId('slug-input')).toBeInTheDocument();
-  });
+  const input = screen.getByTestId('slug-input');
+  expect(input).toBeInTheDocument();
 
-  it('shows error message for invalid slug', async () => {
-    render(
-      <Wrapper>
-        <SlugInput name="slug" />
-      </Wrapper>
-    );
+  input.value = 'invalid slug!';
+  expect(screen.queryByTestId('slug-error')).toBeInTheDocument();
 
-    const input = screen.getByTestId('slug-input');
-    input.value = 'invalid slug!';
-    input.dispatchEvent(new Event('input'));
-
-    expect(screen.getByTestId('slug-error')).toBeInTheDocument();
-  });
+  input.value = 'valid-slug';
+  expect(screen.queryByTestId('slug-error')).not.toBeInTheDocument();
 });
