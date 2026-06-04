@@ -62,7 +62,23 @@ export function DiagnosticReportReview({
   const [conclusion, setConclusion] = useState<string>("");
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const queryClient = useQueryClient();
-  const latestReport = diagnosticReports[0];
+  // ENG-503: backend ordering of `diagnostic_reports` is not guaranteed, and
+  // an SR may have a finalised report alongside a still-preliminary one for a
+  // different `diagnostic_report_code`. The review/approve panel must target
+  // the active non-final report so the approve action operates on the right
+  // record. Fall back to the most recent finalised report only when every
+  // report on the SR is already final (display-only mode).
+  const sortedByMostRecent = [...diagnosticReports].sort((a, b) => {
+    const aDate = a.modified_date || a.created_date || "";
+    const bDate = b.modified_date || b.created_date || "";
+    return bDate.localeCompare(aDate);
+  });
+  const latestReport =
+    sortedByMostRecent.find(
+      (report) => report.status !== DiagnosticReportStatus.final,
+    ) ??
+    sortedByMostRecent[0] ??
+    diagnosticReports[0];
 
   // Fetch the full diagnostic report to get observations
   const { data: fullReport, isLoading: isLoadingReport } = useQuery({

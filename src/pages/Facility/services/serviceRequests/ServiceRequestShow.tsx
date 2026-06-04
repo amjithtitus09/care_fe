@@ -322,8 +322,48 @@ export default function ServiceRequestShow({
     }
   };
 
+  const reportCodes = activityDefinition.diagnostic_report_codes ?? [];
+  const usedReportCodes = diagnosticReports
+    .map((report) => report.code?.code)
+    .filter((code): code is string => !!code);
+  const hasNonFinalReport = diagnosticReports.some(
+    (report) => report.status !== DiagnosticReportStatus.final,
+  );
+  // SRs whose AD has no `diagnostic_report_codes` keep the legacy behaviour:
+  // render the form whenever no report exists yet, or the only report is not
+  // final. SRs whose AD does declare codes also render the form while there
+  // are still unused codes left to create reports for.
+  const hasUnusedReportCode =
+    reportCodes.length > 0
+      ? reportCodes.some((code) => !usedReportCodes.includes(code.code))
+      : diagnosticReports.length === 0;
+  const shouldShowDiagnosticReportForm =
+    hasNonFinalReport || hasUnusedReportCode;
+
+  // ENG-503: completion readiness must be based on report codes when the AD
+  // declares them. Merely having one final report is not enough — every
+  // declared `diagnostic_report_code` must have a matching DiagnosticReport
+  // with `status === final`. ADs without `diagnostic_report_codes` keep the
+  // legacy single-report semantics (one final report is enough).
+  const finalReports = diagnosticReports.filter(
+    (report) => report.status === DiagnosticReportStatus.final,
+  );
   const isFinal =
-    request?.diagnostic_reports?.[0]?.status === DiagnosticReportStatus.final;
+    reportCodes.length > 0
+      ? reportCodes.every((code) =>
+          finalReports.some((report) => report.code?.code === code.code),
+        )
+      : diagnosticReports[0]?.status === DiagnosticReportStatus.final;
+
+  // Pick a representative final report for the legacy single-report
+  // "view report" CTA / observation history sheet. Prefer the most recently
+  // modified/created so multi-report SRs jump to the latest finalised one.
+  const viewReport =
+    [...finalReports].sort((a, b) => {
+      const aDate = a.modified_date || a.created_date || "";
+      const bDate = b.modified_date || b.created_date || "";
+      return bDate.localeCompare(aDate);
+    })[0] ?? request?.diagnostic_reports?.[0];
 
   const canMarkAsComplete =
     isFinal ||
@@ -351,13 +391,13 @@ export default function ServiceRequestShow({
               {canShowCompleteCta && (
                 <div className="flex items-center gap-2">
                   <>
-                    {isFinal && (
+                    {isFinal && viewReport && (
                       <Button
                         variant="primary"
                         className="font-semibold"
                         onClick={() =>
                           navigate(
-                            `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${request.diagnostic_reports[0].id}`,
+                            `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${viewReport.id}`,
                           )
                         }
                       >
@@ -579,9 +619,7 @@ export default function ServiceRequestShow({
                   <DropdownMenuContent align="end">
                     <ObservationHistorySheet
                       patientId={request.encounter.patient.id}
-                      diagnosticReportId={
-                        request.diagnostic_reports[0]?.id || ""
-                      }
+                      diagnosticReportId={viewReport?.id || ""}
                     >
                       <DropdownMenuItem
                         onSelect={(e) => e.preventDefault()}
@@ -596,9 +634,7 @@ export default function ServiceRequestShow({
                 </DropdownMenu>
               </div>
             )}
-            {(!diagnosticReports.length ||
-              diagnosticReports[0]?.status !==
-                DiagnosticReportStatus.final) && (
+            {shouldShowDiagnosticReportForm && (
               <DiagnosticReportForm
                 patientId={request.encounter.patient.id}
                 facilityId={facilityId}

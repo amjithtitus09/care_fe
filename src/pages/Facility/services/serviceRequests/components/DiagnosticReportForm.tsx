@@ -132,10 +132,27 @@ export function DiagnosticReportForm({
   const [conclusion, setConclusion] = useState<string>("");
   const queryClient = useQueryClient();
 
-  // Get the latest report if any exists
+  // Get the latest non-final report (if any). A finalised report should not
+  // keep the form in "edit" mode — instead we may want to start a new report
+  // for a different diagnostic_report_code on the AD (ENG-503).
   const latestReport =
-    diagnosticReports.length > 0 ? diagnosticReports[0] : null;
+    diagnosticReports.find(
+      (report) => report.status !== DiagnosticReportStatus.final,
+    ) ?? null;
   const hasReport = !!latestReport;
+
+  // Codes already used (by any existing report on this SR) — drives both the
+  // dropdown filter and the "all reports created" empty state.
+  const usedReportCodes = diagnosticReports
+    .map((report) => report.code?.code)
+    .filter((code): code is string => !!code);
+  const allReportCodes = activityDefinition?.diagnostic_report_codes ?? [];
+  const availableReportCodes = allReportCodes.filter(
+    (code) => !usedReportCodes.includes(code.code),
+  );
+  const hasReportCodes = allReportCodes.length > 0;
+  const allReportCodesUsed =
+    hasReportCodes && availableReportCodes.length === 0;
 
   // Check if all required specimens are collected
   const hasCollectedSpecimens =
@@ -195,15 +212,24 @@ export function DiagnosticReportForm({
       },
     });
 
-  // Effect to handle diagnostic reports changes
+  // Effect to handle diagnostic reports changes. When transitioning out of
+  // edit mode (e.g. the previous report has been finalised so `latestReport`
+  // becomes null), reset the local form state so values from the previous
+  // report don't leak into the next one. Keying on the primitive `id` keeps
+  // this effect from re-running on every parent re-render where
+  // `latestReport` is freshly derived. The actual `Code` object is hydrated
+  // from `fullReport` in the next effect, so we don't need to read
+  // `latestReport.code` here.
+  const latestReportId = latestReport?.id ?? null;
   useEffect(() => {
-    const latestReport = diagnosticReports[0];
-    if (latestReport) {
-      // If we have a new report, update the UI accordingly
-      setSelectedReportCode(latestReport.code || null);
+    if (latestReportId) {
       setIsExpanded(true);
+    } else {
+      setObservations({});
+      setConclusion("");
+      setSelectedReportCode(null);
     }
-  }, [diagnosticReports]);
+  }, [latestReportId]);
 
   // Effect to handle fullReport changes
   useEffect(() => {
@@ -1206,6 +1232,14 @@ export function DiagnosticReportForm({
                   )}
                 </div>
               </div>
+            ) : allReportCodesUsed ? (
+              <div className="space-y-4 bg-gray-50 rounded-lg p-4">
+                <div className="text-gray-500 flex justify-center items-center">
+                  <p className="mt-2 text-sm text-gray-500 text-center">
+                    {t("all_diagnostic_reports_created")}
+                  </p>
+                </div>
+              </div>
             ) : (
               <div className="space-y-4 bg-gray-50 rounded-lg p-4">
                 <div className="text-gray-500 flex justify-center items-center">
@@ -1216,49 +1250,44 @@ export function DiagnosticReportForm({
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 justify-center">
-                  {activityDefinition?.diagnostic_report_codes &&
-                    activityDefinition.diagnostic_report_codes.length > 0 && (
-                      <div className="flex-1 min-w-0">
-                        <Select
-                          value={selectedReportCode?.code}
-                          onValueChange={(value) => {
-                            const code =
-                              activityDefinition.diagnostic_report_codes?.find(
-                                (c) => c.code === value,
-                              );
-                            setSelectedReportCode(code || null);
-                          }}
-                          disabled={!hasCollectedSpecimens || disableEdit}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue
-                              placeholder={t("select_diagnostic_report_type")}
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {activityDefinition.diagnostic_report_codes.map(
-                              (code) => (
-                                <SelectItem key={code.code} value={code.code}>
-                                  <div className="flex flex-col">
-                                    <span className="truncate">
-                                      {code.display} ({code.code})
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              ),
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
+                  {hasReportCodes && (
+                    <div className="flex-1 min-w-0">
+                      <Select
+                        value={selectedReportCode?.code}
+                        onValueChange={(value) => {
+                          const code = availableReportCodes.find(
+                            (c) => c.code === value,
+                          );
+                          setSelectedReportCode(code || null);
+                        }}
+                        disabled={!hasCollectedSpecimens || disableEdit}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue
+                            placeholder={t("select_diagnostic_report_type")}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableReportCodes.map((code) => (
+                            <SelectItem key={code.code} value={code.code}>
+                              <div className="flex flex-col">
+                                <span className="truncate">
+                                  {code.display} ({code.code})
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <Button
                     onClick={handleCreateReport}
                     disabled={
                       disableEdit ||
                       isCreatingReport ||
                       !hasCollectedSpecimens ||
-                      (!!activityDefinition?.diagnostic_report_codes?.length &&
-                        !selectedReportCode)
+                      (hasReportCodes && !selectedReportCode)
                     }
                     className="w-full sm:w-auto sm:shrink-0"
                   >
