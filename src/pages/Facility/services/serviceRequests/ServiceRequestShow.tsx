@@ -265,7 +265,13 @@ export default function ServiceRequestShow({
   const specimenRequirements = activityDefinition.specimen_requirements ?? [];
   const observationRequirements =
     activityDefinition.observation_result_requirements ?? [];
-  const diagnosticReports = request.diagnostic_reports || [];
+  // The API returns diagnostic reports unordered, so index [0] is NOT reliably
+  // the latest report. Sort newest-first so any consumer that picks `[0]`
+  // (here and in `DiagnosticReportForm`) operates on the most recent report.
+  const diagnosticReports = [...(request.diagnostic_reports || [])].sort(
+    (a, b) =>
+      new Date(b.created_date).getTime() - new Date(a.created_date).getTime(),
+  );
 
   const assignedSpecimenIds = new Set<string>();
 
@@ -322,28 +328,34 @@ export default function ServiceRequestShow({
     }
   };
 
+  // A service request can only be completed once *every* diagnostic report is
+  // final — not just the first one in the (unordered) API response.
   const isFinal =
-    request?.diagnostic_reports?.[0]?.status === DiagnosticReportStatus.final;
+    diagnosticReports.length > 0 &&
+    diagnosticReports.every((r) => r.status === DiagnosticReportStatus.final);
 
   const adReportCodes = activityDefinition?.diagnostic_report_codes ?? [];
   // Tiny derived Set; not memoized because `diagnosticReports` is rebuilt on
-  // every render upstream (`request.diagnostic_reports || []`), so a useMemo
-  // here would re-run anyway and would also have to be hoisted above the
-  // component's early-return branches.
+  // every render upstream (sorted copy of `request.diagnostic_reports`), so a
+  // useMemo here would re-run anyway and would also have to be hoisted above
+  // the component's early-return branches.
   const usedReportCodes = new Set(
     diagnosticReports.map((r) => r.code?.code).filter((c): c is string => !!c),
   );
   const hasUnusedAdReportCodes =
     adReportCodes.length > 0 &&
     adReportCodes.some((c) => !usedReportCodes.has(c.code));
-  const latestDiagnosticReport = diagnosticReports[0];
-  const latestReportInProgress =
-    !!latestDiagnosticReport &&
-    latestDiagnosticReport.status !== DiagnosticReportStatus.final;
+  // Detect an in-progress report across the WHOLE list (not just index [0]).
+  // Otherwise a started-but-not-finalized report sitting behind a finalized one
+  // in the API response gets stranded: the entry form is hidden and the report
+  // can no longer be edited after a reload.
+  const hasReportInProgress = diagnosticReports.some(
+    (r) => r.status !== DiagnosticReportStatus.final,
+  );
   const shouldShowDiagnosticReportForm =
     adReportCodes.length > 0
-      ? hasUnusedAdReportCodes || latestReportInProgress
-      : !diagnosticReports.length || latestReportInProgress;
+      ? hasUnusedAdReportCodes || hasReportInProgress
+      : !diagnosticReports.length || hasReportInProgress;
 
   const canMarkAsComplete =
     isFinal ||
@@ -599,9 +611,7 @@ export default function ServiceRequestShow({
                   <DropdownMenuContent align="end">
                     <ObservationHistorySheet
                       patientId={request.encounter.patient.id}
-                      diagnosticReportId={
-                        request.diagnostic_reports[0]?.id || ""
-                      }
+                      diagnosticReportId={diagnosticReports[0]?.id || ""}
                     >
                       <DropdownMenuItem
                         onSelect={(e) => e.preventDefault()}

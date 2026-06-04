@@ -132,9 +132,23 @@ export function DiagnosticReportForm({
   const [conclusion, setConclusion] = useState<string>("");
   const queryClient = useQueryClient();
 
-  // Get the latest report if any exists
-  const latestReport =
-    diagnosticReports.length > 0 ? diagnosticReports[0] : null;
+  // Pick the report the user should be working on. The API returns reports
+  // unordered, so we can't assume index [0] is the latest. Prefer the most
+  // recent *in-progress* (non-final) report so a started report is always
+  // editable; fall back to the most recent report overall.
+  const latestReport = useMemo(() => {
+    if (diagnosticReports.length === 0) {
+      return null;
+    }
+    const byNewest = [...diagnosticReports].sort(
+      (a, b) =>
+        new Date(b.created_date).getTime() - new Date(a.created_date).getTime(),
+    );
+    return (
+      byNewest.find((r) => r.status !== DiagnosticReportStatus.final) ??
+      byNewest[0]
+    );
+  }, [diagnosticReports]);
   const hasReport = !!latestReport;
 
   // AD diagnostic report codes that are not yet used by an existing report.
