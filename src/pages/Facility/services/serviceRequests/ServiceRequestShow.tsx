@@ -267,6 +267,31 @@ export default function ServiceRequestShow({
     activityDefinition.observation_result_requirements ?? [];
   const diagnosticReports = request.diagnostic_reports || [];
 
+  // Multi-report support (ENG-503): when the Activity Definition declares more
+  // than one `diagnostic_report_codes`, allow creating one report per AD code
+  // (each code at most once per Service Request). Single-report SRs render
+  // unchanged.
+  const adReportCodes = activityDefinition.diagnostic_report_codes ?? [];
+  const isMultiReportEnabled = adReportCodes.length > 1;
+  const usedReportCodes = new Set(
+    diagnosticReports
+      .map((report) => report.code?.code)
+      .filter((code): code is string => Boolean(code)),
+  );
+  const remainingReportCodes = adReportCodes.filter(
+    (code) => !usedReportCodes.has(code.code),
+  );
+  const inProgressReport = isMultiReportEnabled
+    ? diagnosticReports.find(
+        (report) => report.status !== DiagnosticReportStatus.final,
+      )
+    : undefined;
+  const finalReports = isMultiReportEnabled
+    ? diagnosticReports.filter(
+        (report) => report.status === DiagnosticReportStatus.final,
+      )
+    : [];
+
   const assignedSpecimenIds = new Set<string>();
 
   const preparePrintAllQRCodes = async () => {
@@ -322,8 +347,16 @@ export default function ServiceRequestShow({
     }
   };
 
-  const isFinal =
-    request?.diagnostic_reports?.[0]?.status === DiagnosticReportStatus.final;
+  // For multi-report SRs the SR is finalised once every AD-declared report code
+  // has been produced and every existing report is final. For single-report SRs
+  // the original "first report is final" check is preserved.
+  const isFinal = isMultiReportEnabled
+    ? diagnosticReports.length > 0 &&
+      remainingReportCodes.length === 0 &&
+      diagnosticReports.every(
+        (report) => report.status === DiagnosticReportStatus.final,
+      )
+    : diagnosticReports[0]?.status === DiagnosticReportStatus.final;
 
   const canMarkAsComplete =
     isFinal ||
@@ -351,7 +384,7 @@ export default function ServiceRequestShow({
               {canShowCompleteCta && (
                 <div className="flex items-center gap-2">
                   <>
-                    {isFinal && (
+                    {isFinal && !isMultiReportEnabled && (
                       <Button
                         variant="primary"
                         className="font-semibold"
@@ -580,7 +613,9 @@ export default function ServiceRequestShow({
                     <ObservationHistorySheet
                       patientId={request.encounter.patient.id}
                       diagnosticReportId={
-                        request.diagnostic_reports[0]?.id || ""
+                        (isMultiReportEnabled
+                          ? inProgressReport?.id
+                          : request.diagnostic_reports[0]?.id) || ""
                       }
                     >
                       <DropdownMenuItem
@@ -596,31 +631,70 @@ export default function ServiceRequestShow({
                 </DropdownMenu>
               </div>
             )}
-            {(!diagnosticReports.length ||
-              diagnosticReports[0]?.status !==
-                DiagnosticReportStatus.final) && (
-              <DiagnosticReportForm
-                patientId={request.encounter.patient.id}
-                facilityId={facilityId}
-                serviceRequestId={serviceRequestId}
-                observationDefinitions={observationRequirements}
-                diagnosticReports={diagnosticReports}
-                activityDefinition={activityDefinition}
-                specimens={request.specimens || []}
-                disableEdit={disableEdit}
-              />
-            )}
+            {isMultiReportEnabled
+              ? // Multi-report path (ENG-503): the form edits the in-progress
+                // (non-final) report when one exists; otherwise it shows the
+                // create-another slot, with the code dropdown filtered to
+                // remaining AD diagnostic-report codes. Once every AD code has
+                // a final report we hide the form completely.
+                (inProgressReport || remainingReportCodes.length > 0) && (
+                  <DiagnosticReportForm
+                    key={inProgressReport?.id ?? "new"}
+                    patientId={request.encounter.patient.id}
+                    facilityId={facilityId}
+                    serviceRequestId={serviceRequestId}
+                    observationDefinitions={observationRequirements}
+                    diagnosticReports={
+                      inProgressReport ? [inProgressReport] : []
+                    }
+                    activityDefinition={activityDefinition}
+                    specimens={request.specimens || []}
+                    disableEdit={disableEdit}
+                    remainingReportCodes={remainingReportCodes}
+                  />
+                )
+              : (!diagnosticReports.length ||
+                  diagnosticReports[0]?.status !==
+                    DiagnosticReportStatus.final) && (
+                  <DiagnosticReportForm
+                    patientId={request.encounter.patient.id}
+                    facilityId={facilityId}
+                    serviceRequestId={serviceRequestId}
+                    observationDefinitions={observationRequirements}
+                    diagnosticReports={diagnosticReports}
+                    activityDefinition={activityDefinition}
+                    specimens={request.specimens || []}
+                    disableEdit={disableEdit}
+                  />
+                )}
           </div>
 
-          {diagnosticReports.length > 0 && (
-            <DiagnosticReportReview
-              facilityId={facilityId}
-              patientId={request.encounter.patient.id}
-              serviceRequestId={serviceRequestId}
-              diagnosticReports={diagnosticReports}
-              disableEdit={disableEdit}
-            />
-          )}
+          {isMultiReportEnabled
+            ? // One review block per existing report. The in-progress report
+              // gets the editable conclusion + Approve flow; finalised reports
+              // render read-only.
+              [
+                ...(inProgressReport ? [inProgressReport] : []),
+                ...finalReports,
+              ].map((report) => (
+                <DiagnosticReportReview
+                  key={report.id}
+                  facilityId={facilityId}
+                  patientId={request.encounter.patient.id}
+                  serviceRequestId={serviceRequestId}
+                  diagnosticReports={[report]}
+                  disableEdit={disableEdit}
+                />
+              ))
+            : diagnosticReports.length > 0 && (
+                <DiagnosticReportReview
+                  facilityId={facilityId}
+                  patientId={request.encounter.patient.id}
+                  serviceRequestId={serviceRequestId}
+                  diagnosticReports={diagnosticReports}
+                  disableEdit={disableEdit}
+                />
+              )}
         </div>
       </div>
       {!isMobile && (

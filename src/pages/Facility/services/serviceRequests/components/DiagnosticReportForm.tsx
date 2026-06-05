@@ -87,6 +87,15 @@ interface DiagnosticReportFormProps {
   };
   specimens: SpecimenRead[];
   disableEdit: boolean;
+  /**
+   * When the parent operates in multi-report mode (ENG-503) it passes the
+   * subset of `activity_definition.diagnostic_report_codes` that have not yet
+   * been used by an existing report on the Service Request. The dropdown in
+   * the create-report slot is sourced from this list so each AD
+   * diagnostic-report code can only be picked once per SR. When omitted the
+   * legacy single-report behaviour is preserved.
+   */
+  remainingReportCodes?: Code[];
 }
 
 // Interface for component values
@@ -119,6 +128,7 @@ export function DiagnosticReportForm({
   activityDefinition,
   specimens,
   disableEdit,
+  remainingReportCodes,
 }: DiagnosticReportFormProps) {
   const { t } = useTranslation();
   const [observations, setObservations] = useState<ObservationsByDefinition>(
@@ -1216,28 +1226,35 @@ export function DiagnosticReportForm({
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 justify-center">
-                  {activityDefinition?.diagnostic_report_codes &&
-                    activityDefinition.diagnostic_report_codes.length > 0 && (
-                      <div className="flex-1 min-w-0">
-                        <Select
-                          value={selectedReportCode?.code}
-                          onValueChange={(value) => {
-                            const code =
-                              activityDefinition.diagnostic_report_codes?.find(
+                  {(() => {
+                    // In multi-report mode (ENG-503) the dropdown is sourced
+                    // from `remainingReportCodes` (AD codes not yet used by
+                    // an existing report). In single-report mode it falls
+                    // back to the full AD list so behaviour is unchanged.
+                    const reportCodeOptions =
+                      remainingReportCodes ??
+                      activityDefinition?.diagnostic_report_codes;
+                    return (
+                      reportCodeOptions &&
+                      reportCodeOptions.length > 0 && (
+                        <div className="flex-1 min-w-0">
+                          <Select
+                            value={selectedReportCode?.code}
+                            onValueChange={(value) => {
+                              const code = reportCodeOptions.find(
                                 (c) => c.code === value,
                               );
-                            setSelectedReportCode(code || null);
-                          }}
-                          disabled={!hasCollectedSpecimens || disableEdit}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue
-                              placeholder={t("select_diagnostic_report_type")}
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {activityDefinition.diagnostic_report_codes.map(
-                              (code) => (
+                              setSelectedReportCode(code || null);
+                            }}
+                            disabled={!hasCollectedSpecimens || disableEdit}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue
+                                placeholder={t("select_diagnostic_report_type")}
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {reportCodeOptions.map((code) => (
                                 <SelectItem key={code.code} value={code.code}>
                                   <div className="flex flex-col">
                                     <span className="truncate">
@@ -1245,19 +1262,27 @@ export function DiagnosticReportForm({
                                     </span>
                                   </div>
                                 </SelectItem>
-                              ),
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )
+                    );
+                  })()}
                   <Button
                     onClick={handleCreateReport}
                     disabled={
                       disableEdit ||
                       isCreatingReport ||
                       !hasCollectedSpecimens ||
-                      (!!activityDefinition?.diagnostic_report_codes?.length &&
+                      // In multi-report mode, also block creation when the
+                      // remaining-codes list is empty (every AD code already
+                      // has a report) or no code is picked.
+                      (remainingReportCodes !== undefined &&
+                        (remainingReportCodes.length === 0 ||
+                          !selectedReportCode)) ||
+                      (remainingReportCodes === undefined &&
+                        !!activityDefinition?.diagnostic_report_codes?.length &&
                         !selectedReportCode)
                     }
                     className="w-full sm:w-auto sm:shrink-0"
