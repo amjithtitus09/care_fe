@@ -322,8 +322,14 @@ export default function ServiceRequestShow({
     }
   };
 
+  // The service request is considered "final" only when at least one
+  // diagnostic report has been created and every report on it is final.
+  // This is required for activity definitions that allow multiple diagnostic
+  // report codes per service request: the SR cannot be marked complete while
+  // any of the linked reports is still preliminary.
   const isFinal =
-    request?.diagnostic_reports?.[0]?.status === DiagnosticReportStatus.final;
+    diagnosticReports.length > 0 &&
+    diagnosticReports.every((r) => r.status === DiagnosticReportStatus.final);
 
   const canMarkAsComplete =
     isFinal ||
@@ -596,30 +602,84 @@ export default function ServiceRequestShow({
                 </DropdownMenu>
               </div>
             )}
-            {(!diagnosticReports.length ||
-              diagnosticReports[0]?.status !==
-                DiagnosticReportStatus.final) && (
-              <DiagnosticReportForm
-                patientId={request.encounter.patient.id}
-                facilityId={facilityId}
-                serviceRequestId={serviceRequestId}
-                observationDefinitions={observationRequirements}
-                diagnosticReports={diagnosticReports}
-                activityDefinition={activityDefinition}
-                specimens={request.specimens || []}
-                disableEdit={disableEdit}
-              />
-            )}
+            {(() => {
+              const adReportCodes =
+                activityDefinition?.diagnostic_report_codes || [];
+              const usedCodes = new Set(
+                diagnosticReports
+                  .map((r) => r.code?.code)
+                  .filter((c): c is string => !!c),
+              );
+              const availableReportCodes = adReportCodes.filter(
+                (c) => !usedCodes.has(c.code),
+              );
+              // A report is open for editing while it is not final yet.
+              const editableReports = diagnosticReports.filter(
+                (r) => r.status !== DiagnosticReportStatus.final,
+              );
+              // Show the create-new variant when:
+              //  - the AD has no codes configured (legacy free-form path), and
+              //    no report exists yet, OR
+              //  - the AD has codes and at least one is still unused.
+              const canCreateAnotherReport =
+                adReportCodes.length === 0
+                  ? diagnosticReports.length === 0
+                  : availableReportCodes.length > 0;
+
+              return (
+                <>
+                  {editableReports.map((report) => (
+                    <DiagnosticReportForm
+                      key={report.id}
+                      patientId={request.encounter.patient.id}
+                      facilityId={facilityId}
+                      serviceRequestId={serviceRequestId}
+                      observationDefinitions={observationRequirements}
+                      diagnosticReport={report}
+                      availableReportCodes={[]}
+                      activityDefinition={activityDefinition}
+                      specimens={request.specimens || []}
+                      disableEdit={disableEdit}
+                    />
+                  ))}
+                  {canCreateAnotherReport && (
+                    <DiagnosticReportForm
+                      key={
+                        // Re-mount when the set of available codes changes so
+                        // the dropdown's local state resets after each create.
+                        `create-${availableReportCodes
+                          .map((c) => c.code)
+                          .join("|")}`
+                      }
+                      patientId={request.encounter.patient.id}
+                      facilityId={facilityId}
+                      serviceRequestId={serviceRequestId}
+                      observationDefinitions={observationRequirements}
+                      diagnosticReport={null}
+                      availableReportCodes={availableReportCodes}
+                      activityDefinition={activityDefinition}
+                      specimens={request.specimens || []}
+                      disableEdit={disableEdit}
+                    />
+                  )}
+                </>
+              );
+            })()}
           </div>
 
           {diagnosticReports.length > 0 && (
-            <DiagnosticReportReview
-              facilityId={facilityId}
-              patientId={request.encounter.patient.id}
-              serviceRequestId={serviceRequestId}
-              diagnosticReports={diagnosticReports}
-              disableEdit={disableEdit}
-            />
+            <div className="space-y-3">
+              {diagnosticReports.map((report) => (
+                <DiagnosticReportReview
+                  key={report.id}
+                  facilityId={facilityId}
+                  patientId={request.encounter.patient.id}
+                  serviceRequestId={serviceRequestId}
+                  diagnosticReport={report}
+                  disableEdit={disableEdit}
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>

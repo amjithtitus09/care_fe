@@ -47,14 +47,14 @@ interface DiagnosticReportReviewProps {
   facilityId: string;
   patientId: string;
   serviceRequestId: string;
-  diagnosticReports: DiagnosticReportRead[];
+  diagnosticReport: DiagnosticReportRead;
   disableEdit: boolean;
 }
 
 export function DiagnosticReportReview({
   facilityId,
   patientId,
-  diagnosticReports,
+  diagnosticReport,
   disableEdit,
 }: DiagnosticReportReviewProps) {
   const { t } = useTranslation();
@@ -62,18 +62,18 @@ export function DiagnosticReportReview({
   const [conclusion, setConclusion] = useState<string>("");
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const queryClient = useQueryClient();
-  const latestReport = diagnosticReports[0];
+  const reviewedReport = diagnosticReport;
 
   // Fetch the full diagnostic report to get observations
   const { data: fullReport, isLoading: isLoadingReport } = useQuery({
-    queryKey: ["diagnosticReport", latestReport?.id],
+    queryKey: ["diagnosticReport", reviewedReport?.id],
     queryFn: query(diagnosticReportApi.retrieveDiagnosticReport, {
       pathParams: {
         patient_external_id: patientId,
-        external_id: latestReport?.id || "",
+        external_id: reviewedReport?.id || "",
       },
     }),
-    enabled: !!latestReport?.id,
+    enabled: !!reviewedReport?.id,
   });
 
   useEffect(() => {
@@ -102,7 +102,7 @@ export function DiagnosticReportReview({
       mutationFn: mutate(diagnosticReportApi.updateDiagnosticReport, {
         pathParams: {
           patient_external_id: patientId,
-          external_id: latestReport?.id || "",
+          external_id: reviewedReport?.id || "",
         },
       }),
       onSuccess: () => {
@@ -126,16 +126,16 @@ export function DiagnosticReportReview({
     });
 
   const handleApprove = () => {
-    if (latestReport) {
+    if (reviewedReport) {
       updateDiagnosticReport({
-        ...latestReport,
+        ...reviewedReport,
         status: DiagnosticReportStatus.final,
         conclusion,
       });
     }
   };
 
-  if (!latestReport) {
+  if (!reviewedReport) {
     return null;
   }
 
