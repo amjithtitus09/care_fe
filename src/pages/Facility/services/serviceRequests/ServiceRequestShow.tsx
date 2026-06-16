@@ -357,19 +357,45 @@ export default function ServiceRequestShow({
               {canShowCompleteCta && (
                 <div className="flex items-center gap-2">
                   <>
-                    {isFinal && (
+                    {isFinal && diagnosticReports.length === 1 && (
                       <Button
                         variant="primary"
                         className="font-semibold"
                         onClick={() =>
                           navigate(
-                            `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${request.diagnostic_reports[0].id}`,
+                            `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${diagnosticReports[0].id}`,
                           )
                         }
                       >
                         {t("view_report")}
                         <ShortcutBadge actionId="view-report" />
                       </Button>
+                    )}
+                    {isFinal && diagnosticReports.length > 1 && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="primary" className="font-semibold">
+                            {t("view_report")}
+                            <ShortcutBadge actionId="view-report" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {diagnosticReports.map((report) => (
+                            <DropdownMenuItem
+                              key={report.id}
+                              onClick={() =>
+                                navigate(
+                                  `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${report.id}`,
+                                )
+                              }
+                            >
+                              {report.code?.display ||
+                                report.code?.code ||
+                                t("view_report")}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </>
                 </div>
@@ -583,21 +609,44 @@ export default function ServiceRequestShow({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <ObservationHistorySheet
-                      patientId={request.encounter.patient.id}
-                      diagnosticReportId={
-                        request.diagnostic_reports[0]?.id || ""
-                      }
-                    >
-                      <DropdownMenuItem
-                        onSelect={(e) => e.preventDefault()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
+                    {diagnosticReports.length === 0 ? (
+                      <ObservationHistorySheet
+                        patientId={request.encounter.patient.id}
+                        diagnosticReportId=""
                       >
-                        {t("view_observation_history")}
-                      </DropdownMenuItem>
-                    </ObservationHistorySheet>
+                        <DropdownMenuItem
+                          onSelect={(e) => e.preventDefault()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                        >
+                          {t("view_observation_history")}
+                        </DropdownMenuItem>
+                      </ObservationHistorySheet>
+                    ) : (
+                      diagnosticReports.map((report) => {
+                        const codeLabel =
+                          report.code?.display || report.code?.code;
+                        return (
+                          <ObservationHistorySheet
+                            key={report.id}
+                            patientId={request.encounter.patient.id}
+                            diagnosticReportId={report.id}
+                          >
+                            <DropdownMenuItem
+                              onSelect={(e) => e.preventDefault()}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                              }}
+                            >
+                              {diagnosticReports.length === 1 || !codeLabel
+                                ? t("view_observation_history")
+                                : `${t("view_observation_history")} — ${codeLabel}`}
+                            </DropdownMenuItem>
+                          </ObservationHistorySheet>
+                        );
+                      })
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>

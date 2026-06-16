@@ -180,6 +180,12 @@ export function DiagnosticReportReview({
                     <FileCheck2 className="size-6 text-gray-950 font-normal text-base stroke-[1.5px]" />{" "}
                     <span className="text-base/9 text-gray-950 font-medium">
                       {t("result_review")}
+                      {fullReport?.code?.display ? (
+                        <span className="text-gray-700">
+                          {" "}
+                          — {fullReport.code.display}
+                        </span>
+                      ) : null}
                     </span>
                   </p>
                 </CardTitle>
