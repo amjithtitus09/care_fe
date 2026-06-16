@@ -266,6 +266,27 @@ export default function ServiceRequestShow({
   const observationRequirements =
     activityDefinition.observation_result_requirements ?? [];
   const diagnosticReports = request.diagnostic_reports || [];
+  const activityDefinitionReportCodes =
+    activityDefinition.diagnostic_report_codes ?? [];
+  const usedReportCodes = new Set(
+    diagnosticReports
+      .map((report) => report.code?.code)
+      .filter((code): code is string => !!code),
+  );
+  const availableReportCodes = activityDefinitionReportCodes.filter(
+    (code) => !usedReportCodes.has(code.code),
+  );
+  const latestNonFinalReport =
+    diagnosticReports.find(
+      (report) => report.status !== DiagnosticReportStatus.final,
+    ) ?? null;
+  // SRs whose AD has no diagnostic_report_codes use the legacy single-report
+  // flow (one report, no code). When AD codes exist, gating is per-code.
+  const canCreateNewReport =
+    activityDefinitionReportCodes.length > 0
+      ? availableReportCodes.length > 0
+      : diagnosticReports.length === 0;
+  const showDiagnosticReportForm = !!latestNonFinalReport || canCreateNewReport;
 
   const assignedSpecimenIds = new Set<string>();
 
@@ -322,8 +343,24 @@ export default function ServiceRequestShow({
     }
   };
 
+  // SR is considered "final" (ready to mark-as-complete + show a single
+  // top-level View Report shortcut) only when every diagnostic report the user
+  // created on this SR is final. In the multi-report flow the user may stop
+  // before all AD codes are covered, so we gate on the reports that exist,
+  // not on AD code coverage.
   const isFinal =
-    request?.diagnostic_reports?.[0]?.status === DiagnosticReportStatus.final;
+    diagnosticReports.length > 0 &&
+    diagnosticReports.every(
+      (report) => report.status === DiagnosticReportStatus.final,
+    );
+  // The header shortcut View Report button only makes sense when there is a
+  // single report to jump to. With multiple reports, per-report cards in the
+  // review section already provide their own View Report links.
+  const singleFinalReport =
+    diagnosticReports.length === 1 &&
+    diagnosticReports[0]?.status === DiagnosticReportStatus.final
+      ? diagnosticReports[0]
+      : null;
 
   const canMarkAsComplete =
     isFinal ||
@@ -351,13 +388,13 @@ export default function ServiceRequestShow({
               {canShowCompleteCta && (
                 <div className="flex items-center gap-2">
                   <>
-                    {isFinal && (
+                    {singleFinalReport && (
                       <Button
                         variant="primary"
                         className="font-semibold"
                         onClick={() =>
                           navigate(
-                            `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${request.diagnostic_reports[0].id}`,
+                            `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${singleFinalReport.id}`,
                           )
                         }
                       >
@@ -596,9 +633,7 @@ export default function ServiceRequestShow({
                 </DropdownMenu>
               </div>
             )}
-            {(!diagnosticReports.length ||
-              diagnosticReports[0]?.status !==
-                DiagnosticReportStatus.final) && (
+            {showDiagnosticReportForm && (
               <DiagnosticReportForm
                 patientId={request.encounter.patient.id}
                 facilityId={facilityId}
