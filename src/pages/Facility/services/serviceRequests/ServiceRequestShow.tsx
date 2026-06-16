@@ -323,7 +323,18 @@ export default function ServiceRequestShow({
   };
 
   const isFinal =
-    request?.diagnostic_reports?.[0]?.status === DiagnosticReportStatus.final;
+    !!request?.diagnostic_reports?.length &&
+    request.diagnostic_reports.every(
+      (report) => report.status === DiagnosticReportStatus.final,
+    ) &&
+    // For laboratory-style ADs that declare diagnostic-report codes, every
+    // declared code must have a report before the SR can be considered "final".
+    (!request.activity_definition?.diagnostic_report_codes?.length ||
+      request.activity_definition.diagnostic_report_codes.every((code) =>
+        request.diagnostic_reports.some(
+          (report) => report.code?.code === code.code,
+        ),
+      ));
 
   const canMarkAsComplete =
     isFinal ||
@@ -331,6 +342,25 @@ export default function ServiceRequestShow({
   const canShowCompleteCta =
     !request?.activity_definition?.diagnostic_report_codes || canMarkAsComplete;
   const canShowMarkAsCompleteFootBar = canMarkAsComplete && !disableEdit;
+
+  // Codes already used by existing diagnostic reports on this SR. Used below
+  // to decide whether the create-form should still be rendered (i.e. there is
+  // at least one AD code without a corresponding report).
+  const adReportCodes = activityDefinition.diagnostic_report_codes ?? [];
+  const usedReportCodes = new Set(
+    diagnosticReports
+      .map((report) => report.code?.code)
+      .filter((code): code is string => !!code),
+  );
+  const hasInProgressReport = diagnosticReports.some(
+    (report) => report.status !== DiagnosticReportStatus.final,
+  );
+  const hasRemainingReportCodes =
+    adReportCodes.length === 0
+      ? diagnosticReports.length === 0
+      : adReportCodes.some((code) => !usedReportCodes.has(code.code));
+  const showDiagnosticReportForm =
+    hasInProgressReport || hasRemainingReportCodes;
 
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-gray-50 relative">
@@ -351,7 +381,7 @@ export default function ServiceRequestShow({
               {canShowCompleteCta && (
                 <div className="flex items-center gap-2">
                   <>
-                    {isFinal && (
+                    {isFinal && request.diagnostic_reports.length === 1 && (
                       <Button
                         variant="primary"
                         className="font-semibold"
@@ -596,9 +626,7 @@ export default function ServiceRequestShow({
                 </DropdownMenu>
               </div>
             )}
-            {(!diagnosticReports.length ||
-              diagnosticReports[0]?.status !==
-                DiagnosticReportStatus.final) && (
+            {showDiagnosticReportForm && (
               <DiagnosticReportForm
                 patientId={request.encounter.patient.id}
                 facilityId={facilityId}
@@ -613,13 +641,18 @@ export default function ServiceRequestShow({
           </div>
 
           {diagnosticReports.length > 0 && (
-            <DiagnosticReportReview
-              facilityId={facilityId}
-              patientId={request.encounter.patient.id}
-              serviceRequestId={serviceRequestId}
-              diagnosticReports={diagnosticReports}
-              disableEdit={disableEdit}
-            />
+            <div className="space-y-3">
+              {diagnosticReports.map((report) => (
+                <DiagnosticReportReview
+                  key={report.id}
+                  facilityId={facilityId}
+                  patientId={request.encounter.patient.id}
+                  serviceRequestId={serviceRequestId}
+                  report={report}
+                  disableEdit={disableEdit}
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>

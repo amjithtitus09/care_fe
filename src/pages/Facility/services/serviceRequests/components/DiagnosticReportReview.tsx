@@ -47,14 +47,14 @@ interface DiagnosticReportReviewProps {
   facilityId: string;
   patientId: string;
   serviceRequestId: string;
-  diagnosticReports: DiagnosticReportRead[];
+  report: DiagnosticReportRead;
   disableEdit: boolean;
 }
 
 export function DiagnosticReportReview({
   facilityId,
   patientId,
-  diagnosticReports,
+  report,
   disableEdit,
 }: DiagnosticReportReviewProps) {
   const { t } = useTranslation();
@@ -62,18 +62,17 @@ export function DiagnosticReportReview({
   const [conclusion, setConclusion] = useState<string>("");
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const queryClient = useQueryClient();
-  const latestReport = diagnosticReports[0];
 
   // Fetch the full diagnostic report to get observations
   const { data: fullReport, isLoading: isLoadingReport } = useQuery({
-    queryKey: ["diagnosticReport", latestReport?.id],
+    queryKey: ["diagnosticReport", report.id],
     queryFn: query(diagnosticReportApi.retrieveDiagnosticReport, {
       pathParams: {
         patient_external_id: patientId,
-        external_id: latestReport?.id || "",
+        external_id: report.id,
       },
     }),
-    enabled: !!latestReport?.id,
+    enabled: !!report.id,
   });
 
   useEffect(() => {
@@ -102,7 +101,7 @@ export function DiagnosticReportReview({
       mutationFn: mutate(diagnosticReportApi.updateDiagnosticReport, {
         pathParams: {
           patient_external_id: patientId,
-          external_id: latestReport?.id || "",
+          external_id: report.id,
         },
       }),
       onSuccess: () => {
@@ -126,18 +125,12 @@ export function DiagnosticReportReview({
     });
 
   const handleApprove = () => {
-    if (latestReport) {
-      updateDiagnosticReport({
-        ...latestReport,
-        status: DiagnosticReportStatus.final,
-        conclusion,
-      });
-    }
+    updateDiagnosticReport({
+      ...report,
+      status: DiagnosticReportStatus.final,
+      conclusion,
+    });
   };
-
-  if (!latestReport) {
-    return null;
-  }
 
   // Show loading state while fetching the report
   if (isLoadingReport) {
@@ -179,7 +172,9 @@ export function DiagnosticReportReview({
                   <p className="flex items-center gap-1.5">
                     <FileCheck2 className="size-6 text-gray-950 font-normal text-base stroke-[1.5px]" />{" "}
                     <span className="text-base/9 text-gray-950 font-medium">
-                      {t("result_review")}
+                      {fullReport?.code?.display
+                        ? `${t("result_review")} - ${fullReport.code.display}`
+                        : t("result_review")}
                     </span>
                   </p>
                 </CardTitle>
