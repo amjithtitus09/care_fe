@@ -273,8 +273,7 @@ export default function ServiceRequestShow({
   // and the create card only appears while at least one code is still unused.
   // The same single-report rendering is looped for each existing report
   // instead of forking a separate multi-report layout.
-  const adReportCodes =
-    activityDefinition.diagnostic_report_codes ?? [];
+  const adReportCodes = activityDefinition.diagnostic_report_codes ?? [];
   const usedReportCodes = new Set(
     diagnosticReports
       .map((report) => report.code?.code)
@@ -628,9 +627,7 @@ export default function ServiceRequestShow({
                   <DropdownMenuContent align="end">
                     <ObservationHistorySheet
                       patientId={request.encounter.patient.id}
-                      diagnosticReportId={
-                        diagnosticReports[0]?.id || ""
-                      }
+                      diagnosticReportId={diagnosticReports[0]?.id || ""}
                     >
                       <DropdownMenuItem
                         onSelect={(e) => e.preventDefault()}
