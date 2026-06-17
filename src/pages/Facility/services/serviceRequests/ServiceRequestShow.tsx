@@ -267,6 +267,40 @@ export default function ServiceRequestShow({
     activityDefinition.observation_result_requirements ?? [];
   const diagnosticReports = request.diagnostic_reports || [];
 
+  // Activity-Definition-driven multi-diagnostic-report support (ENG-503).
+  // Each AD Diagnostic Report code can be used at most once per Service
+  // Request, so existing-report codes are deduped out of the create dropdown
+  // and the create card only appears while at least one code is still unused.
+  // The same single-report rendering is looped for each existing report
+  // instead of forking a separate multi-report layout.
+  const adReportCodes =
+    activityDefinition.diagnostic_report_codes ?? [];
+  const usedReportCodes = new Set(
+    diagnosticReports
+      .map((report) => report.code?.code)
+      .filter((code): code is string => !!code),
+  );
+  const availableReportCodes = adReportCodes.filter(
+    (code) => !usedReportCodes.has(code.code),
+  );
+  const hasPreliminaryReport = diagnosticReports.some(
+    (report) => report.status !== DiagnosticReportStatus.final,
+  );
+  // Allow creating another report only when AD exposes more codes than are
+  // already used AND every existing report is final. This implements the
+  // "sequential add" UX clarified on the ticket: the user finishes the
+  // current report, then picks the next available code.
+  const canCreateAnotherReport =
+    adReportCodes.length > 0 &&
+    availableReportCodes.length > 0 &&
+    !hasPreliminaryReport;
+  // When the AD has no diagnostic_report_codes configured (e.g. simple
+  // procedure-style ADs), preserve the legacy single-report-on-demand UX:
+  // show the create card whenever there is no existing report at all.
+  const canCreateAdHocReport =
+    adReportCodes.length === 0 && diagnosticReports.length === 0;
+  const showCreateReportCard = canCreateAnotherReport || canCreateAdHocReport;
+
   const assignedSpecimenIds = new Set<string>();
 
   const preparePrintAllQRCodes = async () => {
@@ -322,11 +356,26 @@ export default function ServiceRequestShow({
     }
   };
 
-  const isFinal =
-    request?.diagnostic_reports?.[0]?.status === DiagnosticReportStatus.final;
+  // First final report (used for the top-bar quick "View Report" navigation
+  // and the keyboard shortcut). With multiple reports we still surface a
+  // shortcut to any final report so behavior stays useful in both the
+  // legacy single-report path and the new multi-report path.
+  const firstFinalReport = diagnosticReports.find(
+    (report) => report.status === DiagnosticReportStatus.final,
+  );
+  const hasFinalReport = !!firstFinalReport;
+  // Service Request can be marked complete only when every existing report is
+  // final (the user is not mid-edit on any report). Classifications that are
+  // allowed to be completed without a report keep their existing direct-
+  // completion path.
+  const allReportsFinal =
+    diagnosticReports.length > 0 &&
+    diagnosticReports.every(
+      (report) => report.status === DiagnosticReportStatus.final,
+    );
 
   const canMarkAsComplete =
-    isFinal ||
+    allReportsFinal ||
     CLASSIFICATIONS_CAN_BE_MARKED_AS_COMPLETE.includes(request.category);
   const canShowCompleteCta =
     !request?.activity_definition?.diagnostic_report_codes || canMarkAsComplete;
@@ -351,13 +400,13 @@ export default function ServiceRequestShow({
               {canShowCompleteCta && (
                 <div className="flex items-center gap-2">
                   <>
-                    {isFinal && (
+                    {hasFinalReport && firstFinalReport && (
                       <Button
                         variant="primary"
                         className="font-semibold"
                         onClick={() =>
                           navigate(
-                            `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${request.diagnostic_reports[0].id}`,
+                            `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${firstFinalReport.id}`,
                           )
                         }
                       >
@@ -580,7 +629,7 @@ export default function ServiceRequestShow({
                     <ObservationHistorySheet
                       patientId={request.encounter.patient.id}
                       diagnosticReportId={
-                        request.diagnostic_reports[0]?.id || ""
+                        diagnosticReports[0]?.id || ""
                       }
                     >
                       <DropdownMenuItem
@@ -596,31 +645,69 @@ export default function ServiceRequestShow({
                 </DropdownMenu>
               </div>
             )}
-            {(!diagnosticReports.length ||
-              diagnosticReports[0]?.status !==
-                DiagnosticReportStatus.final) && (
+            {/*
+              Render one DiagnosticReportForm per preliminary report so the
+              same single-report rendering is reused for each report on this
+              Service Request. Final reports render as DiagnosticReportReview
+              cards below. With a single AD code (or none), this is identical
+              to the legacy single-report flow.
+            */}
+            {diagnosticReports
+              .filter(
+                (report) => report.status !== DiagnosticReportStatus.final,
+              )
+              .map((report) => (
+                <DiagnosticReportForm
+                  key={report.id}
+                  patientId={request.encounter.patient.id}
+                  facilityId={facilityId}
+                  serviceRequestId={serviceRequestId}
+                  observationDefinitions={observationRequirements}
+                  report={report}
+                  activityDefinition={activityDefinition}
+                  specimens={request.specimens || []}
+                  disableEdit={disableEdit}
+                />
+              ))}
+            {/*
+              Standalone create card. Appears for the legacy no-AD-codes
+              flow when no report exists yet, and for the AD-driven flow
+              whenever an AD code is still unused and no report is currently
+              in preliminary status (sequential add).
+            */}
+            {showCreateReportCard && (
               <DiagnosticReportForm
+                key="create-new-report"
                 patientId={request.encounter.patient.id}
                 facilityId={facilityId}
                 serviceRequestId={serviceRequestId}
                 observationDefinitions={observationRequirements}
-                diagnosticReports={diagnosticReports}
+                report={null}
                 activityDefinition={activityDefinition}
+                availableReportCodes={availableReportCodes}
                 specimens={request.specimens || []}
                 disableEdit={disableEdit}
               />
             )}
           </div>
 
-          {diagnosticReports.length > 0 && (
+          {/*
+            Render a review card per existing report. Both preliminary and
+            final reports get a review card so the user can see prior
+            results, approve preliminary ones, and navigate to finalized
+            ones — matching the previous single-report behavior, looped per
+            report.
+          */}
+          {diagnosticReports.map((report) => (
             <DiagnosticReportReview
+              key={report.id}
               facilityId={facilityId}
               patientId={request.encounter.patient.id}
               serviceRequestId={serviceRequestId}
-              diagnosticReports={diagnosticReports}
+              report={report}
               disableEdit={disableEdit}
             />
-          )}
+          ))}
         </div>
       </div>
       {!isMobile && (

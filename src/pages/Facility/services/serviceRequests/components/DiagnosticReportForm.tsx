@@ -79,12 +79,25 @@ interface DiagnosticReportFormProps {
   facilityId: string;
   serviceRequestId: string;
   observationDefinitions: ObservationDefinitionReadSpec[];
-  diagnosticReports: DiagnosticReportRead[];
+  /**
+   * The single in-progress report this form edits, or null when the form is
+   * being used to create a brand-new report. Parents that have multiple reports
+   * should render one DiagnosticReportForm per report (looping the same
+   * single-report rendering instead of forking a separate multi-report flow).
+   */
+  report: DiagnosticReportRead | null;
   activityDefinition?: {
     diagnostic_report_codes?: Code[];
     classification?: string;
     specimen_requirements?: SpecimenDefinitionRead[];
   };
+  /**
+   * Diagnostic Report codes from the Activity Definition that are still
+   * available to select when creating a new report. Parents must filter out
+   * codes already used on other reports for the same Service Request so each
+   * AD Diagnostic Report code is used at most once per SR.
+   */
+  availableReportCodes?: Code[];
   specimens: SpecimenRead[];
   disableEdit: boolean;
 }
@@ -115,8 +128,9 @@ export function DiagnosticReportForm({
   patientId,
   serviceRequestId,
   observationDefinitions,
-  diagnosticReports,
+  report,
   activityDefinition,
+  availableReportCodes,
   specimens,
   disableEdit,
 }: DiagnosticReportFormProps) {
@@ -132,10 +146,16 @@ export function DiagnosticReportForm({
   const [conclusion, setConclusion] = useState<string>("");
   const queryClient = useQueryClient();
 
-  // Get the latest report if any exists
-  const latestReport =
-    diagnosticReports.length > 0 ? diagnosticReports[0] : null;
+  // The single report this form is editing. Null when the form is rendering
+  // the create-new-report card.
+  const latestReport = report;
   const hasReport = !!latestReport;
+
+  // Codes from the AD that are still available to select for a new report.
+  // Parents must filter out codes already used by other reports on the same SR
+  // so each AD Diagnostic Report code is used at most once per SR.
+  const reportCodeOptions =
+    availableReportCodes ?? activityDefinition?.diagnostic_report_codes ?? [];
 
   // Check if all required specimens are collected
   const hasCollectedSpecimens =
@@ -195,15 +215,14 @@ export function DiagnosticReportForm({
       },
     });
 
-  // Effect to handle diagnostic reports changes
+  // Effect to handle the bound report changing
   useEffect(() => {
-    const latestReport = diagnosticReports[0];
-    if (latestReport) {
-      // If we have a new report, update the UI accordingly
-      setSelectedReportCode(latestReport.code || null);
+    if (report) {
+      // If we have a report, update the UI accordingly
+      setSelectedReportCode(report.code || null);
       setIsExpanded(true);
     }
-  }, [diagnosticReports]);
+  }, [report]);
 
   // Effect to handle fullReport changes
   useEffect(() => {
@@ -1216,16 +1235,14 @@ export function DiagnosticReportForm({
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 justify-center">
-                  {activityDefinition?.diagnostic_report_codes &&
-                    activityDefinition.diagnostic_report_codes.length > 0 && (
+                  {reportCodeOptions.length > 0 && (
                       <div className="flex-1 min-w-0">
                         <Select
                           value={selectedReportCode?.code}
                           onValueChange={(value) => {
-                            const code =
-                              activityDefinition.diagnostic_report_codes?.find(
-                                (c) => c.code === value,
-                              );
+                            const code = reportCodeOptions.find(
+                              (c) => c.code === value,
+                            );
                             setSelectedReportCode(code || null);
                           }}
                           disabled={!hasCollectedSpecimens || disableEdit}
@@ -1236,17 +1253,15 @@ export function DiagnosticReportForm({
                             />
                           </SelectTrigger>
                           <SelectContent>
-                            {activityDefinition.diagnostic_report_codes.map(
-                              (code) => (
-                                <SelectItem key={code.code} value={code.code}>
-                                  <div className="flex flex-col">
-                                    <span className="truncate">
-                                      {code.display} ({code.code})
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              ),
-                            )}
+                            {reportCodeOptions.map((code) => (
+                              <SelectItem key={code.code} value={code.code}>
+                                <div className="flex flex-col">
+                                  <span className="truncate">
+                                    {code.display} ({code.code})
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -1257,8 +1272,7 @@ export function DiagnosticReportForm({
                       disableEdit ||
                       isCreatingReport ||
                       !hasCollectedSpecimens ||
-                      (!!activityDefinition?.diagnostic_report_codes?.length &&
-                        !selectedReportCode)
+                      (reportCodeOptions.length > 0 && !selectedReportCode)
                     }
                     className="w-full sm:w-auto sm:shrink-0"
                   >
