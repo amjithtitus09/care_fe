@@ -596,20 +596,60 @@ export default function ServiceRequestShow({
                 </DropdownMenu>
               </div>
             )}
-            {(!diagnosticReports.length ||
-              diagnosticReports[0]?.status !==
-                DiagnosticReportStatus.final) && (
-              <DiagnosticReportForm
-                patientId={request.encounter.patient.id}
-                facilityId={facilityId}
-                serviceRequestId={serviceRequestId}
-                observationDefinitions={observationRequirements}
-                diagnosticReports={diagnosticReports}
-                activityDefinition={activityDefinition}
-                specimens={request.specimens || []}
-                disableEdit={disableEdit}
-              />
-            )}
+            {(() => {
+              // Diagnostic report codes from the linked activity definition that
+              // have not yet been used by an existing diagnostic report on this
+              // service request. Each AD code may be used at most once per SR.
+              const activityReportCodes =
+                activityDefinition.diagnostic_report_codes ?? [];
+              const usedReportCodes = new Set(
+                diagnosticReports
+                  .filter((report) => !!report.code?.code)
+                  .map((report) => report.code!.code),
+              );
+              const unusedReportCodeCount = activityReportCodes.filter(
+                (code) => !usedReportCodes.has(code.code),
+              ).length;
+              const latestStatus = diagnosticReports[0]?.status;
+              const hasInProgressReport =
+                !!diagnosticReports.length &&
+                latestStatus !== DiagnosticReportStatus.final;
+
+              // Show the form when there is an in-progress report being edited,
+              // when the AD restricts codes and there are still unused codes to
+              // pick from, or when the AD does not restrict codes at all (the
+              // historical pre-existing single-create flow).
+              const showForm =
+                hasInProgressReport ||
+                (activityReportCodes.length > 0
+                  ? unusedReportCodeCount > 0
+                  : !diagnosticReports.length);
+
+              if (!showForm) return null;
+
+              // Remount the form whenever the in-progress report changes (e.g.
+              // the previous report has just been finalised and we are moving on
+              // to creating the next one) so its locally-held observation /
+              // conclusion state is reset cleanly between reports.
+              const activeReportId =
+                hasInProgressReport && diagnosticReports[0]
+                  ? diagnosticReports[0].id
+                  : `new-${diagnosticReports.length}`;
+
+              return (
+                <DiagnosticReportForm
+                  key={activeReportId}
+                  patientId={request.encounter.patient.id}
+                  facilityId={facilityId}
+                  serviceRequestId={serviceRequestId}
+                  observationDefinitions={observationRequirements}
+                  diagnosticReports={diagnosticReports}
+                  activityDefinition={activityDefinition}
+                  specimens={request.specimens || []}
+                  disableEdit={disableEdit}
+                />
+              );
+            })()}
           </div>
 
           {diagnosticReports.length > 0 && (
