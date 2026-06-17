@@ -6632,5 +6632,8 @@
   "your_request_order_list": "Your Request Order List",
   "zoom_in": "Zoom In",
   "zoom_out": "Zoom Out",
-  "℞": "℞"
+  "℞": "℞",
+  "all_diagnostic_reports_created": "All diagnostic reports for this service request have been created.",
+  "create_next_diagnostic_report": "Pick a code below to create the next diagnostic report.",
+  "diagnostic_report_code_already_used": "A diagnostic report has already been created for this code."
 }

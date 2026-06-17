@@ -322,8 +322,33 @@ export default function ServiceRequestShow({
     }
   };
 
-  const isFinal =
-    request?.diagnostic_reports?.[0]?.status === DiagnosticReportStatus.final;
+  const reportCodes = request?.activity_definition?.diagnostic_report_codes;
+  // "Has unused AD codes" => the user can still create another diagnostic
+  // report for this SR. When the AD has no codes at all, treat this as no
+  // remaining work (matches the legacy single-report behaviour).
+  const usedReportCodeIds = new Set(
+    diagnosticReports
+      .map((report) => report.code?.code)
+      .filter((code): code is string => !!code),
+  );
+  const hasUnusedReportCodes = !!reportCodes?.some(
+    (code) => !usedReportCodeIds.has(code.code),
+  );
+  const hasInProgressReport = diagnosticReports.some(
+    (report) => report.status !== DiagnosticReportStatus.final,
+  );
+  // The diagnostic report workflow is fully done only when at least one
+  // report exists, every report is final, and there are no unused AD codes
+  // left to create. For SRs that previously had a single report and a
+  // single AD code (the most common existing case) this matches the old
+  // `diagnostic_reports[0]?.status === final` check exactly.
+  const allReportsFinal = diagnosticReports.length > 0 && !hasInProgressReport;
+  const isFinal = allReportsFinal && !hasUnusedReportCodes;
+  // Link the header "View Report" button at the most recently created final
+  // report so the user always lands on something they just approved.
+  const latestFinalReport = [...diagnosticReports]
+    .reverse()
+    .find((report) => report.status === DiagnosticReportStatus.final);
 
   const canMarkAsComplete =
     isFinal ||
@@ -351,13 +376,13 @@ export default function ServiceRequestShow({
               {canShowCompleteCta && (
                 <div className="flex items-center gap-2">
                   <>
-                    {isFinal && (
+                    {isFinal && latestFinalReport && (
                       <Button
                         variant="primary"
                         className="font-semibold"
                         onClick={() =>
                           navigate(
-                            `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${request.diagnostic_reports[0].id}`,
+                            `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${latestFinalReport.id}`,
                           )
                         }
                       >
@@ -596,9 +621,7 @@ export default function ServiceRequestShow({
                 </DropdownMenu>
               </div>
             )}
-            {(!diagnosticReports.length ||
-              diagnosticReports[0]?.status !==
-                DiagnosticReportStatus.final) && (
+            {(hasInProgressReport || hasUnusedReportCodes) && (
               <DiagnosticReportForm
                 patientId={request.encounter.patient.id}
                 facilityId={facilityId}
