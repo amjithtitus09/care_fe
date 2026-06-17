@@ -267,6 +267,42 @@ export default function ServiceRequestShow({
     activityDefinition.observation_result_requirements ?? [];
   const diagnosticReports = request.diagnostic_reports || [];
 
+  // Codes already used by existing diagnostic reports on this SR. Per spec,
+  // each Activity Definition diagnostic-report code may be used at most once
+  // per SR (ENG-503).
+  const usedReportCodes = diagnosticReports
+    .map((r) => r.code)
+    .filter((c): c is NonNullable<typeof c> => !!c);
+  const usedReportCodeKeys = new Set(usedReportCodes.map((c) => c.code));
+  const adReportCodes = activityDefinition.diagnostic_report_codes ?? [];
+  const availableReportCodes = adReportCodes.filter(
+    (c) => !usedReportCodeKeys.has(c.code),
+  );
+  const latestDiagnosticReport = diagnosticReports[0];
+  const latestReportIsPreliminary =
+    latestDiagnosticReport?.status === DiagnosticReportStatus.preliminary;
+  // Show the create/edit form when either the active report is still being
+  // worked on, or there are no reports yet, or — for AD-driven SRs that
+  // declare multiple report codes — at least one code is still unused so the
+  // user can loop the existing flow to start the next report.
+  const canStartAnotherReport =
+    adReportCodes.length > 0 && availableReportCodes.length > 0;
+  const showDiagnosticReportForm =
+    latestReportIsPreliminary ||
+    !diagnosticReports.length ||
+    (latestDiagnosticReport?.status === DiagnosticReportStatus.final &&
+      canStartAnotherReport);
+  // When the latest report is already final but unused codes remain, render
+  // the form in "start a new report" mode by hiding the finalized one from
+  // its `diagnosticReports` prop. The form keys all of its draft state on
+  // `diagnosticReports[0]`, so passing an empty array makes it behave as a
+  // fresh create form for the next code.
+  const formDiagnosticReports = latestReportIsPreliminary
+    ? diagnosticReports
+    : !diagnosticReports.length
+      ? diagnosticReports
+      : [];
+
   const assignedSpecimenIds = new Set<string>();
 
   const preparePrintAllQRCodes = async () => {
@@ -596,30 +632,39 @@ export default function ServiceRequestShow({
                 </DropdownMenu>
               </div>
             )}
-            {(!diagnosticReports.length ||
-              diagnosticReports[0]?.status !==
-                DiagnosticReportStatus.final) && (
+            {showDiagnosticReportForm && (
               <DiagnosticReportForm
+                key={
+                  latestReportIsPreliminary
+                    ? `report-${latestDiagnosticReport?.id}`
+                    : `new-report-${diagnosticReports.length}`
+                }
                 patientId={request.encounter.patient.id}
                 facilityId={facilityId}
                 serviceRequestId={serviceRequestId}
                 observationDefinitions={observationRequirements}
-                diagnosticReports={diagnosticReports}
+                diagnosticReports={formDiagnosticReports}
                 activityDefinition={activityDefinition}
                 specimens={request.specimens || []}
                 disableEdit={disableEdit}
+                usedCodes={usedReportCodes}
               />
             )}
           </div>
 
           {diagnosticReports.length > 0 && (
-            <DiagnosticReportReview
-              facilityId={facilityId}
-              patientId={request.encounter.patient.id}
-              serviceRequestId={serviceRequestId}
-              diagnosticReports={diagnosticReports}
-              disableEdit={disableEdit}
-            />
+            <div className="space-y-3">
+              {diagnosticReports.map((report) => (
+                <DiagnosticReportReview
+                  key={report.id}
+                  facilityId={facilityId}
+                  patientId={request.encounter.patient.id}
+                  serviceRequestId={serviceRequestId}
+                  diagnosticReports={[report]}
+                  disableEdit={disableEdit}
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>

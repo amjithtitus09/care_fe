@@ -87,6 +87,13 @@ interface DiagnosticReportFormProps {
   };
   specimens: SpecimenRead[];
   disableEdit: boolean;
+  /**
+   * Diagnostic-report codes that are already in use on this service request.
+   * Used to dedupe the code dropdown so the same Activity Definition code
+   * cannot be picked twice when looping through multiple reports.
+   * When omitted, falls back to codes from `diagnosticReports`.
+   */
+  usedCodes?: Code[];
 }
 
 // Interface for component values
@@ -119,6 +126,7 @@ export function DiagnosticReportForm({
   activityDefinition,
   specimens,
   disableEdit,
+  usedCodes,
 }: DiagnosticReportFormProps) {
   const { t } = useTranslation();
   const [observations, setObservations] = useState<ObservationsByDefinition>(
@@ -136,6 +144,20 @@ export function DiagnosticReportForm({
   const latestReport =
     diagnosticReports.length > 0 ? diagnosticReports[0] : null;
   const hasReport = !!latestReport;
+
+  // Codes already used on this service request. Falls back to deriving from
+  // `diagnosticReports` so existing call sites keep working.
+  const effectiveUsedCodes: Code[] =
+    usedCodes ??
+    diagnosticReports.map((r) => r.code).filter((c): c is Code => !!c);
+  const usedCodeKeys = new Set(effectiveUsedCodes.map((c) => c.code));
+
+  // Activity Definition codes still available for a new report (dedup of
+  // already-used codes). Per spec each AD diagnostic-report code may be used
+  // at most once per service request.
+  const availableReportCodes: Code[] = (
+    activityDefinition?.diagnostic_report_codes ?? []
+  ).filter((c) => !usedCodeKeys.has(c.code));
 
   // Check if all required specimens are collected
   const hasCollectedSpecimens =
@@ -1216,41 +1238,37 @@ export function DiagnosticReportForm({
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 justify-center">
-                  {activityDefinition?.diagnostic_report_codes &&
-                    activityDefinition.diagnostic_report_codes.length > 0 && (
-                      <div className="flex-1 min-w-0">
-                        <Select
-                          value={selectedReportCode?.code}
-                          onValueChange={(value) => {
-                            const code =
-                              activityDefinition.diagnostic_report_codes?.find(
-                                (c) => c.code === value,
-                              );
-                            setSelectedReportCode(code || null);
-                          }}
-                          disabled={!hasCollectedSpecimens || disableEdit}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue
-                              placeholder={t("select_diagnostic_report_type")}
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {activityDefinition.diagnostic_report_codes.map(
-                              (code) => (
-                                <SelectItem key={code.code} value={code.code}>
-                                  <div className="flex flex-col">
-                                    <span className="truncate">
-                                      {code.display} ({code.code})
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              ),
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
+                  {availableReportCodes.length > 0 && (
+                    <div className="flex-1 min-w-0">
+                      <Select
+                        value={selectedReportCode?.code}
+                        onValueChange={(value) => {
+                          const code = availableReportCodes.find(
+                            (c) => c.code === value,
+                          );
+                          setSelectedReportCode(code || null);
+                        }}
+                        disabled={!hasCollectedSpecimens || disableEdit}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue
+                            placeholder={t("select_diagnostic_report_type")}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableReportCodes.map((code) => (
+                            <SelectItem key={code.code} value={code.code}>
+                              <div className="flex flex-col">
+                                <span className="truncate">
+                                  {code.display} ({code.code})
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <Button
                     onClick={handleCreateReport}
                     disabled={
