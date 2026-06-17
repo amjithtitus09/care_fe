@@ -323,7 +323,10 @@ export default function ServiceRequestShow({
   };
 
   const isFinal =
-    request?.diagnostic_reports?.[0]?.status === DiagnosticReportStatus.final;
+    diagnosticReports.length > 0 &&
+    diagnosticReports.every(
+      (report) => report.status === DiagnosticReportStatus.final,
+    );
 
   const canMarkAsComplete =
     isFinal ||
@@ -351,13 +354,13 @@ export default function ServiceRequestShow({
               {canShowCompleteCta && (
                 <div className="flex items-center gap-2">
                   <>
-                    {isFinal && (
+                    {isFinal && diagnosticReports.length === 1 && (
                       <Button
                         variant="primary"
                         className="font-semibold"
                         onClick={() =>
                           navigate(
-                            `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${request.diagnostic_reports[0].id}`,
+                            `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${diagnosticReports[0].id}`,
                           )
                         }
                       >
@@ -596,31 +599,59 @@ export default function ServiceRequestShow({
                 </DropdownMenu>
               </div>
             )}
-            {(!diagnosticReports.length ||
-              diagnosticReports[0]?.status !==
-                DiagnosticReportStatus.final) && (
-              <DiagnosticReportForm
-                patientId={request.encounter.patient.id}
-                facilityId={facilityId}
-                serviceRequestId={serviceRequestId}
-                observationDefinitions={observationRequirements}
-                diagnosticReports={diagnosticReports}
-                activityDefinition={activityDefinition}
-                specimens={request.specimens || []}
-                disableEdit={disableEdit}
-              />
-            )}
+            {(() => {
+              const adReportCodes =
+                activityDefinition.diagnostic_report_codes || [];
+              const usedCodeKeys = new Set(
+                diagnosticReports
+                  .map((report) => report.code)
+                  .filter((code): code is NonNullable<typeof code> => !!code)
+                  .map((code) => `${code.system || ""}|${code.code}`),
+              );
+              const remainingCodes = adReportCodes.filter(
+                (code) =>
+                  !usedCodeKeys.has(`${code.system || ""}|${code.code}`),
+              );
+              const hasInProgressReport = diagnosticReports.some(
+                (report) => report.status !== DiagnosticReportStatus.final,
+              );
+              // Show the form whenever there is an in-progress report to edit,
+              // OR when more reports can still be created. When the AD has no
+              // diagnostic_report_codes the existing single-report flow is
+              // preserved (form shown until the first report is final).
+              const showForm =
+                hasInProgressReport ||
+                (adReportCodes.length === 0
+                  ? diagnosticReports.length === 0
+                  : remainingCodes.length > 0);
+              return (
+                showForm && (
+                  <DiagnosticReportForm
+                    patientId={request.encounter.patient.id}
+                    facilityId={facilityId}
+                    serviceRequestId={serviceRequestId}
+                    observationDefinitions={observationRequirements}
+                    diagnosticReports={diagnosticReports}
+                    activityDefinition={activityDefinition}
+                    specimens={request.specimens || []}
+                    disableEdit={disableEdit}
+                  />
+                )
+              );
+            })()}
           </div>
 
-          {diagnosticReports.length > 0 && (
-            <DiagnosticReportReview
-              facilityId={facilityId}
-              patientId={request.encounter.patient.id}
-              serviceRequestId={serviceRequestId}
-              diagnosticReports={diagnosticReports}
-              disableEdit={disableEdit}
-            />
-          )}
+          {diagnosticReports.length > 0 &&
+            diagnosticReports.map((diagnosticReport) => (
+              <DiagnosticReportReview
+                key={diagnosticReport.id}
+                facilityId={facilityId}
+                patientId={request.encounter.patient.id}
+                serviceRequestId={serviceRequestId}
+                diagnosticReports={[diagnosticReport]}
+                disableEdit={disableEdit}
+              />
+            ))}
         </div>
       </div>
       {!isMobile && (

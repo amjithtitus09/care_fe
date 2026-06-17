@@ -132,10 +132,26 @@ export function DiagnosticReportForm({
   const [conclusion, setConclusion] = useState<string>("");
   const queryClient = useQueryClient();
 
-  // Get the latest report if any exists
+  // The form edits the latest in-progress (non-final) report. Once a report is
+  // marked final, the user can start a new one for any remaining AD code.
   const latestReport =
-    diagnosticReports.length > 0 ? diagnosticReports[0] : null;
+    diagnosticReports.find(
+      (report) => report.status !== DiagnosticReportStatus.final,
+    ) || null;
   const hasReport = !!latestReport;
+
+  // Codes from the AD that have not yet been used by any existing diagnostic
+  // report on this SR. Each AD diagnostic_report_code is allowed at most once
+  // per SR (dedupe), so already-used codes are filtered out.
+  const usedCodeKeys = new Set(
+    diagnosticReports
+      .map((report) => report.code)
+      .filter((code): code is Code => !!code)
+      .map((code) => `${code.system || ""}|${code.code}`),
+  );
+  const availableReportCodes = (
+    activityDefinition?.diagnostic_report_codes || []
+  ).filter((code) => !usedCodeKeys.has(`${code.system || ""}|${code.code}`));
 
   // Check if all required specimens are collected
   const hasCollectedSpecimens =
@@ -197,13 +213,20 @@ export function DiagnosticReportForm({
 
   // Effect to handle diagnostic reports changes
   useEffect(() => {
-    const latestReport = diagnosticReports[0];
     if (latestReport) {
-      // If we have a new report, update the UI accordingly
+      // While a report is in progress, reflect its code in the UI.
       setSelectedReportCode(latestReport.code || null);
       setIsExpanded(true);
+    } else {
+      // No in-progress report: reset selection so the user can pick a fresh
+      // (still-available) code for the next report.
+      setSelectedReportCode(null);
+      setIsExpanded(true);
     }
-  }, [diagnosticReports]);
+    // We intentionally key on the in-progress report's id (or its absence) so
+    // we don't thrash state when other reports change unrelated fields.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latestReport?.id]);
 
   // Effect to handle fullReport changes
   useEffect(() => {
@@ -468,7 +491,9 @@ export function DiagnosticReportForm({
   }
 
   function handleCreateReport() {
-    // Only create a new report if no reports exist
+    // Only create a new report if there is no in-progress report. Once the
+    // previous report is marked final, the user can create another one for any
+    // remaining (un-used) AD code.
     if (!hasReport) {
       if (!hasCollectedSpecimens) {
         toast.error(t("specimen_collection_required"));
@@ -1222,13 +1247,16 @@ export function DiagnosticReportForm({
                         <Select
                           value={selectedReportCode?.code}
                           onValueChange={(value) => {
-                            const code =
-                              activityDefinition.diagnostic_report_codes?.find(
-                                (c) => c.code === value,
-                              );
+                            const code = availableReportCodes.find(
+                              (c) => c.code === value,
+                            );
                             setSelectedReportCode(code || null);
                           }}
-                          disabled={!hasCollectedSpecimens || disableEdit}
+                          disabled={
+                            !hasCollectedSpecimens ||
+                            disableEdit ||
+                            availableReportCodes.length === 0
+                          }
                         >
                           <SelectTrigger className="w-full">
                             <SelectValue
@@ -1236,17 +1264,15 @@ export function DiagnosticReportForm({
                             />
                           </SelectTrigger>
                           <SelectContent>
-                            {activityDefinition.diagnostic_report_codes.map(
-                              (code) => (
-                                <SelectItem key={code.code} value={code.code}>
-                                  <div className="flex flex-col">
-                                    <span className="truncate">
-                                      {code.display} ({code.code})
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              ),
-                            )}
+                            {availableReportCodes.map((code) => (
+                              <SelectItem key={code.code} value={code.code}>
+                                <div className="flex flex-col">
+                                  <span className="truncate">
+                                    {code.display} ({code.code})
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -1258,7 +1284,8 @@ export function DiagnosticReportForm({
                       isCreatingReport ||
                       !hasCollectedSpecimens ||
                       (!!activityDefinition?.diagnostic_report_codes?.length &&
-                        !selectedReportCode)
+                        (!selectedReportCode ||
+                          availableReportCodes.length === 0))
                     }
                     className="w-full sm:w-auto sm:shrink-0"
                   >
