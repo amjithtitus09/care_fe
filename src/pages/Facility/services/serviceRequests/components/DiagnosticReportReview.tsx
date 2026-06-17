@@ -51,29 +51,35 @@ interface DiagnosticReportReviewProps {
   disableEdit: boolean;
 }
 
-export function DiagnosticReportReview({
+interface DiagnosticReportReviewCardProps {
+  facilityId: string;
+  patientId: string;
+  report: DiagnosticReportRead;
+  disableEdit: boolean;
+}
+
+function DiagnosticReportReviewCard({
   facilityId,
   patientId,
-  diagnosticReports,
+  report,
   disableEdit,
-}: DiagnosticReportReviewProps) {
+}: DiagnosticReportReviewCardProps) {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(true);
   const [conclusion, setConclusion] = useState<string>("");
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const queryClient = useQueryClient();
-  const latestReport = diagnosticReports[0];
 
   // Fetch the full diagnostic report to get observations
   const { data: fullReport, isLoading: isLoadingReport } = useQuery({
-    queryKey: ["diagnosticReport", latestReport?.id],
+    queryKey: ["diagnosticReport", report.id],
     queryFn: query(diagnosticReportApi.retrieveDiagnosticReport, {
       pathParams: {
         patient_external_id: patientId,
-        external_id: latestReport?.id || "",
+        external_id: report.id,
       },
     }),
-    enabled: !!latestReport?.id,
+    enabled: !!report.id,
   });
 
   useEffect(() => {
@@ -102,7 +108,7 @@ export function DiagnosticReportReview({
       mutationFn: mutate(diagnosticReportApi.updateDiagnosticReport, {
         pathParams: {
           patient_external_id: patientId,
-          external_id: latestReport?.id || "",
+          external_id: report.id,
         },
       }),
       onSuccess: () => {
@@ -126,18 +132,12 @@ export function DiagnosticReportReview({
     });
 
   const handleApprove = () => {
-    if (latestReport) {
-      updateDiagnosticReport({
-        ...latestReport,
-        status: DiagnosticReportStatus.final,
-        conclusion,
-      });
-    }
+    updateDiagnosticReport({
+      ...report,
+      status: DiagnosticReportStatus.final,
+      conclusion,
+    });
   };
-
-  if (!latestReport) {
-    return null;
-  }
 
   // Show loading state while fetching the report
   if (isLoadingReport) {
@@ -334,5 +334,33 @@ export function DiagnosticReportReview({
         </CollapsibleContent>
       </Collapsible>
     </Card>
+  );
+}
+
+export function DiagnosticReportReview({
+  facilityId,
+  patientId,
+  diagnosticReports,
+  disableEdit,
+}: DiagnosticReportReviewProps) {
+  if (!diagnosticReports.length) {
+    return null;
+  }
+
+  // Render one review card per report so SRs with multiple diagnostic reports
+  // (one per AD code) each get their own conclusion / approve / view-report
+  // flow. For SRs with a single report this collapses to the previous UI.
+  return (
+    <div className="space-y-6">
+      {diagnosticReports.map((report) => (
+        <DiagnosticReportReviewCard
+          key={report.id}
+          facilityId={facilityId}
+          patientId={patientId}
+          report={report}
+          disableEdit={disableEdit}
+        />
+      ))}
+    </div>
   );
 }

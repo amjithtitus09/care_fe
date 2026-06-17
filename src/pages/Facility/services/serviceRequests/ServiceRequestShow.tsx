@@ -322,8 +322,45 @@ export default function ServiceRequestShow({
     }
   };
 
-  const isFinal =
-    request?.diagnostic_reports?.[0]?.status === DiagnosticReportStatus.final;
+  // For multi-report SRs (AD exposes multiple diagnostic_report_codes), the
+  // SR is fully finalized only when every diagnostic_report_code that the AD
+  // exposes has a corresponding final report. For single-report SRs this
+  // collapses to the previous "first report is final" behaviour.
+  const adReportCodes = request?.activity_definition?.diagnostic_report_codes;
+  const usedReportCodes = new Set(
+    diagnosticReports
+      .map((report) => report.code?.code)
+      .filter((code): code is string => !!code),
+  );
+  const availableReportCodes = (adReportCodes ?? []).filter(
+    (code) => !usedReportCodes.has(code.code),
+  );
+  const allReportsFinal =
+    diagnosticReports.length > 0 &&
+    diagnosticReports.every(
+      (report) => report.status === DiagnosticReportStatus.final,
+    );
+
+  const isFinal = adReportCodes?.length
+    ? allReportsFinal && availableReportCodes.length === 0
+    : diagnosticReports[0]?.status === DiagnosticReportStatus.final;
+
+  // The active report drives both the "View observation history" link in the
+  // SR header and the SR-level "View Report" button. Prefer the first
+  // non-final report (the one currently being filled). When none is in
+  // progress, fall back to the first report.
+  const activeReport =
+    diagnosticReports.find(
+      (report) => report.status !== DiagnosticReportStatus.final,
+    ) ||
+    diagnosticReports[0] ||
+    null;
+
+  // Show the DiagnosticReportForm whenever there is still work to do: any
+  // non-final report exists, no reports have been created yet, or more AD
+  // codes are still available to create a report for.
+  const showDiagnosticReportForm =
+    !allReportsFinal || availableReportCodes.length > 0;
 
   const canMarkAsComplete =
     isFinal ||
@@ -351,13 +388,13 @@ export default function ServiceRequestShow({
               {canShowCompleteCta && (
                 <div className="flex items-center gap-2">
                   <>
-                    {isFinal && (
+                    {isFinal && activeReport && (
                       <Button
                         variant="primary"
                         className="font-semibold"
                         onClick={() =>
                           navigate(
-                            `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${request.diagnostic_reports[0].id}`,
+                            `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${activeReport.id}`,
                           )
                         }
                       >
@@ -579,9 +616,7 @@ export default function ServiceRequestShow({
                   <DropdownMenuContent align="end">
                     <ObservationHistorySheet
                       patientId={request.encounter.patient.id}
-                      diagnosticReportId={
-                        request.diagnostic_reports[0]?.id || ""
-                      }
+                      diagnosticReportId={activeReport?.id || ""}
                     >
                       <DropdownMenuItem
                         onSelect={(e) => e.preventDefault()}
@@ -596,9 +631,7 @@ export default function ServiceRequestShow({
                 </DropdownMenu>
               </div>
             )}
-            {(!diagnosticReports.length ||
-              diagnosticReports[0]?.status !==
-                DiagnosticReportStatus.final) && (
+            {showDiagnosticReportForm && (
               <DiagnosticReportForm
                 patientId={request.encounter.patient.id}
                 facilityId={facilityId}

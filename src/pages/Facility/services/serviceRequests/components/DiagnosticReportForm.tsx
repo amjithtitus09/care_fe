@@ -132,9 +132,36 @@ export function DiagnosticReportForm({
   const [conclusion, setConclusion] = useState<string>("");
   const queryClient = useQueryClient();
 
-  // Get the latest report if any exists
+  // The "active" report is the one currently being filled in. We treat the
+  // first non-final report as active so that, when an AD exposes multiple
+  // diagnostic report codes, the user fills/approves them one at a time and
+  // this form scopes its observations/files/mutations to that report.
+  // Falling back to diagnosticReports[0] preserves the previous single-report
+  // behaviour when every report is already final.
+  const activeReport =
+    diagnosticReports.find(
+      (report) => report.status !== DiagnosticReportStatus.final,
+    ) || (diagnosticReports.length > 0 ? diagnosticReports[0] : null);
+
+  // Show the create-next-report UI only when the active report is final (or
+  // none exists yet) AND there is still at least one AD code that has not
+  // been used. Each AD diagnostic report code can be used at most once per SR.
+  const usedReportCodes = new Set(
+    diagnosticReports
+      .map((report) => report.code?.code)
+      .filter((code): code is string => !!code),
+  );
+  const availableReportCodes = (
+    activityDefinition?.diagnostic_report_codes ?? []
+  ).filter((code) => !usedReportCodes.has(code.code));
+
+  // "hasReport" is true when there is an active (non-final) report we should
+  // render the entry/approval form for. When the active report is final and
+  // codes are still available, fall through to the create-next-report UI.
   const latestReport =
-    diagnosticReports.length > 0 ? diagnosticReports[0] : null;
+    activeReport && activeReport.status !== DiagnosticReportStatus.final
+      ? activeReport
+      : null;
   const hasReport = !!latestReport;
 
   // Check if all required specimens are collected
@@ -195,15 +222,21 @@ export function DiagnosticReportForm({
       },
     });
 
-  // Effect to handle diagnostic reports changes
+  // Effect to handle diagnostic reports changes. When the active report
+  // switches (e.g. after approving one and starting the next one), refresh
+  // the selected code and re-expand the card. Also clear the dropdown
+  // selection when no report is being filled so the next report starts blank.
   useEffect(() => {
-    const latestReport = diagnosticReports[0];
     if (latestReport) {
-      // If we have a new report, update the UI accordingly
       setSelectedReportCode(latestReport.code || null);
       setIsExpanded(true);
+    } else {
+      setSelectedReportCode(null);
     }
-  }, [diagnosticReports]);
+    // We only care about the active report changing; full report list churn
+    // does not need to re-run this effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latestReport?.id]);
 
   // Effect to handle fullReport changes
   useEffect(() => {
@@ -291,9 +324,19 @@ export function DiagnosticReportForm({
     }
   }, [openUploadDialog]);
 
-  // Initialize form with existing observations from the full report
+  // Initialize form with existing observations from the full report.
+  // When the active report flips (e.g. previous report approved → next one
+  // created), the previously-active report's local state must be cleared
+  // before the new report's observations load so we don't accidentally show
+  // the old report's results.
   useEffect(() => {
-    if (fullReport?.observations && fullReport.observations.length > 0) {
+    if (!fullReport) {
+      setObservations({});
+      setConclusion("");
+      return;
+    }
+
+    if (fullReport.observations && fullReport.observations.length > 0) {
       const initialObservations: ObservationsByDefinition = {};
 
       fullReport.observations
@@ -333,11 +376,11 @@ export function DiagnosticReportForm({
         });
 
       setObservations(initialObservations);
-
-      if (fullReport.conclusion) {
-        setConclusion(fullReport.conclusion);
-      }
+    } else {
+      setObservations({});
     }
+
+    setConclusion(fullReport.conclusion || "");
   }, [fullReport]);
 
   function handleValueChange(
@@ -1212,45 +1255,44 @@ export function DiagnosticReportForm({
                   <p className="mt-2 text-sm text-gray-500 text-center">
                     {!hasCollectedSpecimens
                       ? t("collect_specimen_before_report")
-                      : t("no_test_results_recorded")}
+                      : availableReportCodes.length === 0 &&
+                          diagnosticReports.length > 0
+                        ? t("all_diagnostic_report_codes_used")
+                        : t("no_test_results_recorded")}
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 justify-center">
-                  {activityDefinition?.diagnostic_report_codes &&
-                    activityDefinition.diagnostic_report_codes.length > 0 && (
-                      <div className="flex-1 min-w-0">
-                        <Select
-                          value={selectedReportCode?.code}
-                          onValueChange={(value) => {
-                            const code =
-                              activityDefinition.diagnostic_report_codes?.find(
-                                (c) => c.code === value,
-                              );
-                            setSelectedReportCode(code || null);
-                          }}
-                          disabled={!hasCollectedSpecimens || disableEdit}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue
-                              placeholder={t("select_diagnostic_report_type")}
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {activityDefinition.diagnostic_report_codes.map(
-                              (code) => (
-                                <SelectItem key={code.code} value={code.code}>
-                                  <div className="flex flex-col">
-                                    <span className="truncate">
-                                      {code.display} ({code.code})
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              ),
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
+                  {availableReportCodes.length > 0 && (
+                    <div className="flex-1 min-w-0">
+                      <Select
+                        value={selectedReportCode?.code}
+                        onValueChange={(value) => {
+                          const code = availableReportCodes.find(
+                            (c) => c.code === value,
+                          );
+                          setSelectedReportCode(code || null);
+                        }}
+                        disabled={!hasCollectedSpecimens || disableEdit}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue
+                            placeholder={t("select_diagnostic_report_type")}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableReportCodes.map((code) => (
+                            <SelectItem key={code.code} value={code.code}>
+                              <div className="flex flex-col">
+                                <span className="truncate">
+                                  {code.display} ({code.code})
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <Button
                     onClick={handleCreateReport}
                     disabled={
