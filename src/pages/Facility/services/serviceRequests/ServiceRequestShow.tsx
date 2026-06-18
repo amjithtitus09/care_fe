@@ -295,6 +295,17 @@ export default function ServiceRequestShow({
   const finalReports = diagnosticReports.filter(
     (r) => r.status === DiagnosticReportStatus.final,
   );
+  // Reports we render a DiagnosticReportReview card for. The active draft is
+  // included so the user has a UI path to finalize it (the Approve Results
+  // button lives inside DiagnosticReportReview and is gated on the report's
+  // status === preliminary). DiagnosticReportReview self-suppresses when a
+  // draft has no observations/conclusion/files yet, so a brand-new empty
+  // draft does not render an empty card. Order: drafts first, then finals,
+  // so the active editable row sits adjacent to the form.
+  const reviewReports = [
+    ...(activeDraftReport ? [activeDraftReport] : []),
+    ...finalReports,
+  ];
   // Render the inline create/edit form when either:
   // - the user is mid-draft on a report; OR
   // - there are still AD codes left to cover; OR
@@ -661,15 +672,15 @@ export default function ServiceRequestShow({
             )}
           </div>
 
-          {finalReports.map((finalReport) => (
+          {reviewReports.map((reviewReport) => (
             <DiagnosticReportReview
-              key={finalReport.id}
+              key={reviewReport.id}
               facilityId={facilityId}
               patientId={request.encounter.patient.id}
               serviceRequestId={serviceRequestId}
               diagnosticReports={diagnosticReports}
               disableEdit={disableEdit}
-              report={finalReport}
+              report={reviewReport}
             />
           ))}
         </div>
