@@ -49,6 +49,11 @@ interface DiagnosticReportReviewProps {
   serviceRequestId: string;
   diagnosticReports: DiagnosticReportRead[];
   disableEdit: boolean;
+  /**
+   * Specific report this review card should render. When omitted, falls back
+   * to `diagnosticReports[0]` (legacy single-report behavior).
+   */
+  report?: DiagnosticReportRead | null;
 }
 
 export function DiagnosticReportReview({
@@ -56,13 +61,14 @@ export function DiagnosticReportReview({
   patientId,
   diagnosticReports,
   disableEdit,
+  report,
 }: DiagnosticReportReviewProps) {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(true);
   const [conclusion, setConclusion] = useState<string>("");
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const queryClient = useQueryClient();
-  const latestReport = diagnosticReports[0];
+  const latestReport = report !== undefined ? report : diagnosticReports[0];
 
   // Fetch the full diagnostic report to get observations
   const { data: fullReport, isLoading: isLoadingReport } = useQuery({

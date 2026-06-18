@@ -267,6 +267,44 @@ export default function ServiceRequestShow({
     activityDefinition.observation_result_requirements ?? [];
   const diagnosticReports = request.diagnostic_reports || [];
 
+  // Activity-definition diagnostic-report codes drive the per-SR loop. When
+  // there are multiple codes on an AD, the user creates one diagnostic report
+  // per code (each code may be used at most once per SR).
+  const adDiagnosticReportCodes =
+    activityDefinition.diagnostic_report_codes ?? [];
+  // Codes already covered by an existing report on this SR. Reports created
+  // before this multi-code support landed (or no-code reports) are skipped.
+  const usedReportCodes = new Set(
+    diagnosticReports
+      .map((r) => r.code?.code)
+      .filter((code): code is string => !!code),
+  );
+  // Remaining AD codes the user may still pick from when creating the next
+  // report.
+  const availableReportCodes = adDiagnosticReportCodes.filter(
+    (code) => !usedReportCodes.has(code.code),
+  );
+  // The most-recent non-final report — this is the report the inline form
+  // edits. By construction (UX disables the picker while a draft exists) there
+  // is at most one of these at a time, but we defensively take the first.
+  const activeDraftReport =
+    diagnosticReports.find((r) => r.status !== DiagnosticReportStatus.final) ??
+    null;
+  // Final reports get their own DiagnosticReportReview card so the user can
+  // see the history of every code that has already been completed.
+  const finalReports = diagnosticReports.filter(
+    (r) => r.status === DiagnosticReportStatus.final,
+  );
+  // Render the inline create/edit form when either:
+  // - the user is mid-draft on a report; OR
+  // - there are still AD codes left to cover; OR
+  // - the AD has no diagnostic-report codes at all and no report exists yet
+  //   (legacy no-code SR flow).
+  const showDiagnosticReportForm =
+    !!activeDraftReport ||
+    availableReportCodes.length > 0 ||
+    (adDiagnosticReportCodes.length === 0 && diagnosticReports.length === 0);
+
   const assignedSpecimenIds = new Set<string>();
 
   const preparePrintAllQRCodes = async () => {
@@ -322,8 +360,19 @@ export default function ServiceRequestShow({
     }
   };
 
-  const isFinal =
-    request?.diagnostic_reports?.[0]?.status === DiagnosticReportStatus.final;
+  // A diagnostic report is considered done when there is at least one final
+  // report on the SR AND no in-progress drafts. This matches the legacy
+  // single-report behavior (1 report, final ⇒ done) and extends correctly to
+  // the multi-report case (no "mark as complete" while a draft is mid-flight).
+  const hasFinalReport = diagnosticReports.some(
+    (r) => r.status === DiagnosticReportStatus.final,
+  );
+  const hasInProgressReport = diagnosticReports.some(
+    (r) => r.status !== DiagnosticReportStatus.final,
+  );
+  const isFinal = hasFinalReport && !hasInProgressReport;
+  // First final report — used by the header "View Report" shortcut button.
+  const firstFinalReport = finalReports[0] ?? null;
 
   const canMarkAsComplete =
     isFinal ||
@@ -351,13 +400,13 @@ export default function ServiceRequestShow({
               {canShowCompleteCta && (
                 <div className="flex items-center gap-2">
                   <>
-                    {isFinal && (
+                    {isFinal && firstFinalReport && (
                       <Button
                         variant="primary"
                         className="font-semibold"
                         onClick={() =>
                           navigate(
-                            `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${request.diagnostic_reports[0].id}`,
+                            `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${firstFinalReport.id}`,
                           )
                         }
                       >
@@ -596,9 +645,7 @@ export default function ServiceRequestShow({
                 </DropdownMenu>
               </div>
             )}
-            {(!diagnosticReports.length ||
-              diagnosticReports[0]?.status !==
-                DiagnosticReportStatus.final) && (
+            {showDiagnosticReportForm && (
               <DiagnosticReportForm
                 patientId={request.encounter.patient.id}
                 facilityId={facilityId}
@@ -608,19 +655,23 @@ export default function ServiceRequestShow({
                 activityDefinition={activityDefinition}
                 specimens={request.specimens || []}
                 disableEdit={disableEdit}
+                targetReport={activeDraftReport}
+                availableCodes={availableReportCodes}
               />
             )}
           </div>
 
-          {diagnosticReports.length > 0 && (
+          {finalReports.map((finalReport) => (
             <DiagnosticReportReview
+              key={finalReport.id}
               facilityId={facilityId}
               patientId={request.encounter.patient.id}
               serviceRequestId={serviceRequestId}
               diagnosticReports={diagnosticReports}
               disableEdit={disableEdit}
+              report={finalReport}
             />
-          )}
+          ))}
         </div>
       </div>
       {!isMobile && (

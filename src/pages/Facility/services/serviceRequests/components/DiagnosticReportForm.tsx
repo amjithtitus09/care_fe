@@ -87,6 +87,19 @@ interface DiagnosticReportFormProps {
   };
   specimens: SpecimenRead[];
   disableEdit: boolean;
+  /**
+   * Specific report this form instance should edit. Pass `null` to render the
+   * "create next report" flow even when other reports exist on the service
+   * request. When omitted, the form falls back to the legacy single-report
+   * behavior of operating on `diagnosticReports[0]`.
+   */
+  targetReport?: DiagnosticReportRead | null;
+  /**
+   * Activity-definition diagnostic-report codes the user is still allowed to
+   * pick from for the create flow. When omitted, the form falls back to the
+   * full `activityDefinition.diagnostic_report_codes` list (legacy behavior).
+   */
+  availableCodes?: Code[];
 }
 
 // Interface for component values
@@ -119,6 +132,8 @@ export function DiagnosticReportForm({
   activityDefinition,
   specimens,
   disableEdit,
+  targetReport,
+  availableCodes,
 }: DiagnosticReportFormProps) {
   const { t } = useTranslation();
   const [observations, setObservations] = useState<ObservationsByDefinition>(
@@ -132,10 +147,21 @@ export function DiagnosticReportForm({
   const [conclusion, setConclusion] = useState<string>("");
   const queryClient = useQueryClient();
 
-  // Get the latest report if any exists
+  // The report this form instance is bound to. When `targetReport` is
+  // explicitly provided (including `null`), use it; otherwise fall back to the
+  // legacy single-report behavior of picking the most-recent report.
   const latestReport =
-    diagnosticReports.length > 0 ? diagnosticReports[0] : null;
+    targetReport !== undefined
+      ? targetReport
+      : diagnosticReports.length > 0
+        ? diagnosticReports[0]
+        : null;
   const hasReport = !!latestReport;
+
+  // Codes the user may still pick when creating a new report. When the parent
+  // hasn't filtered the list (legacy callers), fall back to all AD codes.
+  const pickerCodes =
+    availableCodes ?? activityDefinition?.diagnostic_report_codes ?? [];
 
   // Check if all required specimens are collected
   const hasCollectedSpecimens =
@@ -195,15 +221,19 @@ export function DiagnosticReportForm({
       },
     });
 
-  // Effect to handle diagnostic reports changes
+  // Effect to handle the bound report changing (new report created, switched
+  // to a different report, or reset back to the create flow).
   useEffect(() => {
-    const latestReport = diagnosticReports[0];
     if (latestReport) {
-      // If we have a new report, update the UI accordingly
+      // If we have a new/different report, sync the picker + expand the card.
       setSelectedReportCode(latestReport.code || null);
       setIsExpanded(true);
+    } else {
+      // Back to create mode — clear any leftover picker selection so the user
+      // can choose a fresh code from the (filtered) dropdown.
+      setSelectedReportCode(null);
     }
-  }, [diagnosticReports]);
+  }, [latestReport]);
 
   // Effect to handle fullReport changes
   useEffect(() => {
@@ -290,6 +320,15 @@ export function DiagnosticReportForm({
       fileUpload.clearFiles();
     }
   }, [openUploadDialog]);
+
+  // Reset locally-edited state whenever the bound report changes (including
+  // when switching from one report to another, or back to create mode). This
+  // prevents stale observations/conclusion from the previously-bound report
+  // leaking into the new one.
+  useEffect(() => {
+    setObservations({});
+    setConclusion("");
+  }, [latestReport?.id]);
 
   // Initialize form with existing observations from the full report
   useEffect(() => {
@@ -1216,49 +1255,44 @@ export function DiagnosticReportForm({
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 justify-center">
-                  {activityDefinition?.diagnostic_report_codes &&
-                    activityDefinition.diagnostic_report_codes.length > 0 && (
-                      <div className="flex-1 min-w-0">
-                        <Select
-                          value={selectedReportCode?.code}
-                          onValueChange={(value) => {
-                            const code =
-                              activityDefinition.diagnostic_report_codes?.find(
-                                (c) => c.code === value,
-                              );
-                            setSelectedReportCode(code || null);
-                          }}
-                          disabled={!hasCollectedSpecimens || disableEdit}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue
-                              placeholder={t("select_diagnostic_report_type")}
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {activityDefinition.diagnostic_report_codes.map(
-                              (code) => (
-                                <SelectItem key={code.code} value={code.code}>
-                                  <div className="flex flex-col">
-                                    <span className="truncate">
-                                      {code.display} ({code.code})
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              ),
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
+                  {pickerCodes.length > 0 && (
+                    <div className="flex-1 min-w-0">
+                      <Select
+                        value={selectedReportCode?.code}
+                        onValueChange={(value) => {
+                          const code = pickerCodes.find(
+                            (c) => c.code === value,
+                          );
+                          setSelectedReportCode(code || null);
+                        }}
+                        disabled={!hasCollectedSpecimens || disableEdit}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue
+                            placeholder={t("select_diagnostic_report_type")}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {pickerCodes.map((code) => (
+                            <SelectItem key={code.code} value={code.code}>
+                              <div className="flex flex-col">
+                                <span className="truncate">
+                                  {code.display} ({code.code})
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <Button
                     onClick={handleCreateReport}
                     disabled={
                       disableEdit ||
                       isCreatingReport ||
                       !hasCollectedSpecimens ||
-                      (!!activityDefinition?.diagnostic_report_codes?.length &&
-                        !selectedReportCode)
+                      (pickerCodes.length > 0 && !selectedReportCode)
                     }
                     className="w-full sm:w-auto sm:shrink-0"
                   >
