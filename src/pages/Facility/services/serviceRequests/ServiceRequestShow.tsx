@@ -267,6 +267,28 @@ export default function ServiceRequestShow({
     activityDefinition.observation_result_requirements ?? [];
   const diagnosticReports = request.diagnostic_reports || [];
 
+  // Codes already claimed by an existing diagnostic report on this SR. Used to
+  // dedupe the create-new-report dropdown so each AD diagnostic-report code
+  // can be used at most once per SR (see ENG-503).
+  const usedReportCodes = new Set(
+    diagnosticReports
+      .map((report) => report.code?.code)
+      .filter((code): code is string => !!code),
+  );
+  const activityDefinitionReportCodes =
+    activityDefinition.diagnostic_report_codes ?? [];
+  const availableReportCodes = activityDefinitionReportCodes.filter(
+    (code) => !usedReportCodes.has(code.code),
+  );
+  // When the AD has diagnostic-report codes, allow creating a new report only
+  // if at least one code is still unused. When the AD has no diagnostic-report
+  // codes, fall back to the legacy single-uncoded-report behavior: allow create
+  // only if no report exists yet.
+  const canCreateAnotherReport =
+    activityDefinitionReportCodes.length > 0
+      ? availableReportCodes.length > 0
+      : diagnosticReports.length === 0;
+
   const assignedSpecimenIds = new Set<string>();
 
   const preparePrintAllQRCodes = async () => {
@@ -596,31 +618,48 @@ export default function ServiceRequestShow({
                 </DropdownMenu>
               </div>
             )}
-            {(!diagnosticReports.length ||
-              diagnosticReports[0]?.status !==
-                DiagnosticReportStatus.final) && (
+            {diagnosticReports
+              .filter(
+                (report) => report.status !== DiagnosticReportStatus.final,
+              )
+              .map((report) => (
+                <DiagnosticReportForm
+                  key={report.id}
+                  patientId={request.encounter.patient.id}
+                  facilityId={facilityId}
+                  serviceRequestId={serviceRequestId}
+                  observationDefinitions={observationRequirements}
+                  diagnosticReports={[report]}
+                  activityDefinition={activityDefinition}
+                  specimens={request.specimens || []}
+                  disableEdit={disableEdit}
+                />
+              ))}
+            {canCreateAnotherReport && (
               <DiagnosticReportForm
                 patientId={request.encounter.patient.id}
                 facilityId={facilityId}
                 serviceRequestId={serviceRequestId}
                 observationDefinitions={observationRequirements}
-                diagnosticReports={diagnosticReports}
+                diagnosticReports={[]}
                 activityDefinition={activityDefinition}
+                availableCodes={availableReportCodes}
                 specimens={request.specimens || []}
                 disableEdit={disableEdit}
               />
             )}
           </div>
 
-          {diagnosticReports.length > 0 && (
+          {diagnosticReports.map((report) => (
             <DiagnosticReportReview
+              key={report.id}
               facilityId={facilityId}
               patientId={request.encounter.patient.id}
               serviceRequestId={serviceRequestId}
-              diagnosticReports={diagnosticReports}
+              diagnosticReports={[report]}
               disableEdit={disableEdit}
             />
-          )}
+          ))}
         </div>
       </div>
       {!isMobile && (

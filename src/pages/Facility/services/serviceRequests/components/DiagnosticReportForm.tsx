@@ -87,6 +87,15 @@ interface DiagnosticReportFormProps {
   };
   specimens: SpecimenRead[];
   disableEdit: boolean;
+  /**
+   * Optional override for the diagnostic-report-code dropdown shown when no
+   * report exists yet on this form. When omitted, the dropdown falls back to
+   * `activityDefinition.diagnostic_report_codes` (existing single-report
+   * behavior). The parent passes the AD codes filtered by codes already used
+   * by sibling reports on the same Service Request so each code can be used
+   * at most once per SR.
+   */
+  availableCodes?: Code[];
 }
 
 // Interface for component values
@@ -119,6 +128,7 @@ export function DiagnosticReportForm({
   activityDefinition,
   specimens,
   disableEdit,
+  availableCodes,
 }: DiagnosticReportFormProps) {
   const { t } = useTranslation();
   const [observations, setObservations] = useState<ObservationsByDefinition>(
@@ -212,6 +222,21 @@ export function DiagnosticReportForm({
       setSelectedReportCode(fullReport.code || null);
     }
   }, [fullReport]);
+
+  // When this form is acting as a "create another report" picker and the
+  // available code list shrinks (because a sibling report just claimed the
+  // same code), drop a stale selection so the user can't try to create a
+  // duplicate report for an already-used code.
+  useEffect(() => {
+    if (
+      !hasReport &&
+      availableCodes &&
+      selectedReportCode &&
+      !availableCodes.some((c) => c.code === selectedReportCode.code)
+    ) {
+      setSelectedReportCode(null);
+    }
+  }, [hasReport, availableCodes, selectedReportCode]);
 
   // Upserting observations for a diagnostic report
   const { mutate: upsertObservations, isPending: isUpsertingObservations } =
@@ -1216,16 +1241,21 @@ export function DiagnosticReportForm({
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 justify-center">
-                  {activityDefinition?.diagnostic_report_codes &&
-                    activityDefinition.diagnostic_report_codes.length > 0 && (
+                  {(() => {
+                    const dropdownCodes =
+                      availableCodes ??
+                      activityDefinition?.diagnostic_report_codes;
+                    if (!dropdownCodes || dropdownCodes.length === 0) {
+                      return null;
+                    }
+                    return (
                       <div className="flex-1 min-w-0">
                         <Select
                           value={selectedReportCode?.code}
                           onValueChange={(value) => {
-                            const code =
-                              activityDefinition.diagnostic_report_codes?.find(
-                                (c) => c.code === value,
-                              );
+                            const code = dropdownCodes.find(
+                              (c) => c.code === value,
+                            );
                             setSelectedReportCode(code || null);
                           }}
                           disabled={!hasCollectedSpecimens || disableEdit}
@@ -1236,28 +1266,30 @@ export function DiagnosticReportForm({
                             />
                           </SelectTrigger>
                           <SelectContent>
-                            {activityDefinition.diagnostic_report_codes.map(
-                              (code) => (
-                                <SelectItem key={code.code} value={code.code}>
-                                  <div className="flex flex-col">
-                                    <span className="truncate">
-                                      {code.display} ({code.code})
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              ),
-                            )}
+                            {dropdownCodes.map((code) => (
+                              <SelectItem key={code.code} value={code.code}>
+                                <div className="flex flex-col">
+                                  <span className="truncate">
+                                    {code.display} ({code.code})
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
-                    )}
+                    );
+                  })()}
                   <Button
                     onClick={handleCreateReport}
                     disabled={
                       disableEdit ||
                       isCreatingReport ||
                       !hasCollectedSpecimens ||
-                      (!!activityDefinition?.diagnostic_report_codes?.length &&
+                      (!!(
+                        availableCodes ??
+                        activityDefinition?.diagnostic_report_codes
+                      )?.length &&
                         !selectedReportCode)
                     }
                     className="w-full sm:w-auto sm:shrink-0"
