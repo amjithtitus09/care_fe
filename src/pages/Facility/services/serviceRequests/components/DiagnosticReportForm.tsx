@@ -226,6 +226,14 @@ export function DiagnosticReportForm({
       // selection so the rest of the UI stays consistent.
       setSelectedReportCode(activeReport.code || null);
       setIsExpanded(true);
+    } else {
+      // No active report (e.g. the user just approved the previous one and
+      // the SR refetched with all current reports final). The form will
+      // re-render the create-new dropdown filtered to availableReportCodes;
+      // clear any stale selection from the just-finalized report so the
+      // user must explicitly pick from the remaining unused codes and we
+      // never accidentally POST a duplicate code.
+      setSelectedReportCode(null);
     }
   }, [activeReport]);
 
