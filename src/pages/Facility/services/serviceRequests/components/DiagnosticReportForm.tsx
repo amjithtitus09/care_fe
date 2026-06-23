@@ -132,10 +132,28 @@ export function DiagnosticReportForm({
   const [conclusion, setConclusion] = useState<string>("");
   const queryClient = useQueryClient();
 
-  // Get the latest report if any exists
-  const latestReport =
-    diagnosticReports.length > 0 ? diagnosticReports[0] : null;
-  const hasReport = !!latestReport;
+  // Pick the most recent in-progress (non-final) report to edit, if any.
+  // With multi-code Activity Definitions a SR can have several reports — we
+  // only want to edit the one that's still being filled in. All final reports
+  // are rendered as separate review cards by the parent.
+  const activeReport =
+    diagnosticReports.find(
+      (report) => report.status !== DiagnosticReportStatus.final,
+    ) ?? null;
+  const hasReport = !!activeReport;
+
+  // Codes already consumed by existing reports for this SR; we filter these
+  // out of the create-new dropdown so each AD diagnostic-report code is used
+  // at most once per SR.
+  const usedReportCodes = new Set(
+    diagnosticReports
+      .map((report) => report.code?.code)
+      .filter((code): code is string => !!code),
+  );
+  const allReportCodes = activityDefinition?.diagnostic_report_codes ?? [];
+  const availableReportCodes = allReportCodes.filter(
+    (code) => !usedReportCodes.has(code.code),
+  );
 
   // Check if all required specimens are collected
   const hasCollectedSpecimens =
@@ -144,14 +162,14 @@ export function DiagnosticReportForm({
 
   // Fetch the full diagnostic report to get observations
   const { data: fullReport, isLoading: isLoadingReport } = useQuery({
-    queryKey: ["diagnosticReport", latestReport?.id],
+    queryKey: ["diagnosticReport", activeReport?.id],
     queryFn: query(diagnosticReportApi.retrieveDiagnosticReport, {
       pathParams: {
         patient_external_id: patientId,
-        external_id: latestReport?.id || "",
+        external_id: activeReport?.id || "",
       },
     }),
-    enabled: !!latestReport?.id,
+    enabled: !!activeReport?.id,
   });
 
   // Query to fetch files for the diagnostic report
@@ -180,6 +198,12 @@ export function DiagnosticReportForm({
       }),
       onSuccess: () => {
         toast.success(t("diagnostic_report_created_successfully"));
+        // Reset local-only state so the form is ready for the next code
+        // (or shows the freshly-created report as the active one once the
+        // refetched SR makes it available).
+        setSelectedReportCode(null);
+        setObservations({});
+        setConclusion("");
         queryClient.invalidateQueries({
           queryKey: ["serviceRequest"],
         });
@@ -197,19 +221,24 @@ export function DiagnosticReportForm({
 
   // Effect to handle diagnostic reports changes
   useEffect(() => {
-    const latestReport = diagnosticReports[0];
-    if (latestReport) {
-      // If we have a new report, update the UI accordingly
-      setSelectedReportCode(latestReport.code || null);
+    if (activeReport) {
+      // While editing an in-progress report, mirror its code in the local
+      // selection so the rest of the UI stays consistent.
+      setSelectedReportCode(activeReport.code || null);
       setIsExpanded(true);
     }
-  }, [diagnosticReports]);
+  }, [activeReport]);
 
   // Effect to handle fullReport changes
   useEffect(() => {
     if (fullReport) {
-      // When we get the full report details, ensure UI is in correct state
-      setSelectedReportCode(fullReport.code || null);
+      // When we get the full report details, ensure UI is in correct state.
+      // Only mirror the fetched code while we're still editing this report;
+      // if it has flipped to final the form is showing the create-new
+      // dropdown again and we don't want to clobber the user's selection.
+      if (fullReport.status !== DiagnosticReportStatus.final) {
+        setSelectedReportCode(fullReport.code || null);
+      }
     }
   }, [fullReport]);
 
@@ -219,7 +248,7 @@ export function DiagnosticReportForm({
       mutationFn: mutate(observationApi.upsertObservations, {
         pathParams: {
           patient_external_id: patientId,
-          external_id: latestReport?.id || "",
+          external_id: activeReport?.id || "",
         },
       }),
       onSuccess: () => {
@@ -228,7 +257,7 @@ export function DiagnosticReportForm({
           queryKey: ["serviceRequest", serviceRequestId],
         });
         queryClient.invalidateQueries({
-          queryKey: ["diagnosticReport", latestReport?.id],
+          queryKey: ["diagnosticReport", activeReport?.id],
         });
       },
       onError: (err: any) => {
@@ -243,13 +272,13 @@ export function DiagnosticReportForm({
       mutationFn: mutate(diagnosticReportApi.updateDiagnosticReport, {
         pathParams: {
           patient_external_id: patientId,
-          external_id: latestReport?.id || "",
+          external_id: activeReport?.id || "",
         },
       }),
       onSuccess: () => {
         toast.success(t("conclusion_updated_successfully"));
         queryClient.invalidateQueries({
-          queryKey: ["diagnosticReport", latestReport?.id],
+          queryKey: ["diagnosticReport", activeReport?.id],
         });
         setIsExpanded(false);
       },
@@ -266,7 +295,7 @@ export function DiagnosticReportForm({
     allowNameFallback: false,
     onUpload: () => {
       queryClient.invalidateQueries({
-        queryKey: ["diagnosticReport", latestReport?.id],
+        queryKey: ["diagnosticReport", activeReport?.id],
       });
     },
     compress: false,
@@ -468,7 +497,10 @@ export function DiagnosticReportForm({
   }
 
   function handleCreateReport() {
-    // Only create a new report if no reports exist
+    // Only create a new report when there is no in-progress (non-final)
+    // report already being edited. With multi-code Activity Definitions the
+    // user can come back to this branch multiple times to create a report
+    // for each remaining unused code.
     if (!hasReport) {
       if (!hasCollectedSpecimens) {
         toast.error(t("specimen_collection_required"));
@@ -824,6 +856,17 @@ export function DiagnosticReportForm({
         </CardContent>
       </Card>
     );
+  }
+
+  // Nothing to do: every existing report is final and there are no more AD
+  // codes to consume (or the AD has no codes and the single allowed report
+  // is already finalized). The parent renders per-report review cards.
+  if (
+    !hasReport &&
+    diagnosticReports.length > 0 &&
+    availableReportCodes.length === 0
+  ) {
+    return null;
   }
 
   return (
@@ -1216,49 +1259,44 @@ export function DiagnosticReportForm({
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 justify-center">
-                  {activityDefinition?.diagnostic_report_codes &&
-                    activityDefinition.diagnostic_report_codes.length > 0 && (
-                      <div className="flex-1 min-w-0">
-                        <Select
-                          value={selectedReportCode?.code}
-                          onValueChange={(value) => {
-                            const code =
-                              activityDefinition.diagnostic_report_codes?.find(
-                                (c) => c.code === value,
-                              );
-                            setSelectedReportCode(code || null);
-                          }}
-                          disabled={!hasCollectedSpecimens || disableEdit}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue
-                              placeholder={t("select_diagnostic_report_type")}
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {activityDefinition.diagnostic_report_codes.map(
-                              (code) => (
-                                <SelectItem key={code.code} value={code.code}>
-                                  <div className="flex flex-col">
-                                    <span className="truncate">
-                                      {code.display} ({code.code})
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              ),
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
+                  {allReportCodes.length > 0 && (
+                    <div className="flex-1 min-w-0">
+                      <Select
+                        value={selectedReportCode?.code}
+                        onValueChange={(value) => {
+                          const code = availableReportCodes.find(
+                            (c) => c.code === value,
+                          );
+                          setSelectedReportCode(code || null);
+                        }}
+                        disabled={!hasCollectedSpecimens || disableEdit}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue
+                            placeholder={t("select_diagnostic_report_type")}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableReportCodes.map((code) => (
+                            <SelectItem key={code.code} value={code.code}>
+                              <div className="flex flex-col">
+                                <span className="truncate">
+                                  {code.display} ({code.code})
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <Button
                     onClick={handleCreateReport}
                     disabled={
                       disableEdit ||
                       isCreatingReport ||
                       !hasCollectedSpecimens ||
-                      (!!activityDefinition?.diagnostic_report_codes?.length &&
-                        !selectedReportCode)
+                      (allReportCodes.length > 0 && !selectedReportCode)
                     }
                     className="w-full sm:w-auto sm:shrink-0"
                   >

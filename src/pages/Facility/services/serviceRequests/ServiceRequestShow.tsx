@@ -322,8 +322,30 @@ export default function ServiceRequestShow({
     }
   };
 
+  const requiredReportCodes = activityDefinition?.diagnostic_report_codes ?? [];
+  const finalisedReportCodes = new Set(
+    diagnosticReports
+      .filter((report) => report.status === DiagnosticReportStatus.final)
+      .map((report) => report.code?.code)
+      .filter((code): code is string => !!code),
+  );
+  // For multi-code Activity Definitions the SR is “done” only when every
+  // required AD diagnostic-report code has a final report. For ADs without
+  // any diagnostic-report codes, fall back to the original single-report
+  // check (at least one report is final).
   const isFinal =
-    request?.diagnostic_reports?.[0]?.status === DiagnosticReportStatus.final;
+    requiredReportCodes.length > 0
+      ? requiredReportCodes.every((code) => finalisedReportCodes.has(code.code))
+      : diagnosticReports.some(
+          (report) => report.status === DiagnosticReportStatus.final,
+        );
+  // Prefer the first final report for the top-bar deep link, falling back to
+  // whatever happens to be at index 0 (single-report SRs keep the old
+  // behaviour exactly).
+  const primaryFinalReport =
+    diagnosticReports.find(
+      (report) => report.status === DiagnosticReportStatus.final,
+    ) ?? diagnosticReports[0];
 
   const canMarkAsComplete =
     isFinal ||
@@ -357,7 +379,7 @@ export default function ServiceRequestShow({
                         className="font-semibold"
                         onClick={() =>
                           navigate(
-                            `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${request.diagnostic_reports[0].id}`,
+                            `/facility/${facilityId}/patient/${request.encounter.patient.id}/diagnostic_reports/${primaryFinalReport.id}`,
                           )
                         }
                       >
@@ -596,30 +618,31 @@ export default function ServiceRequestShow({
                 </DropdownMenu>
               </div>
             )}
-            {(!diagnosticReports.length ||
-              diagnosticReports[0]?.status !==
-                DiagnosticReportStatus.final) && (
-              <DiagnosticReportForm
-                patientId={request.encounter.patient.id}
-                facilityId={facilityId}
-                serviceRequestId={serviceRequestId}
-                observationDefinitions={observationRequirements}
-                diagnosticReports={diagnosticReports}
-                activityDefinition={activityDefinition}
-                specimens={request.specimens || []}
-                disableEdit={disableEdit}
-              />
-            )}
+            <DiagnosticReportForm
+              patientId={request.encounter.patient.id}
+              facilityId={facilityId}
+              serviceRequestId={serviceRequestId}
+              observationDefinitions={observationRequirements}
+              diagnosticReports={diagnosticReports}
+              activityDefinition={activityDefinition}
+              specimens={request.specimens || []}
+              disableEdit={disableEdit}
+            />
           </div>
 
           {diagnosticReports.length > 0 && (
-            <DiagnosticReportReview
-              facilityId={facilityId}
-              patientId={request.encounter.patient.id}
-              serviceRequestId={serviceRequestId}
-              diagnosticReports={diagnosticReports}
-              disableEdit={disableEdit}
-            />
+            <div className="space-y-4">
+              {diagnosticReports.map((report) => (
+                <DiagnosticReportReview
+                  key={report.id}
+                  facilityId={facilityId}
+                  patientId={request.encounter.patient.id}
+                  serviceRequestId={serviceRequestId}
+                  report={report}
+                  disableEdit={disableEdit}
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>
