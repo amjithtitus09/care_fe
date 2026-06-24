@@ -16,7 +16,7 @@ on:
 permissions: read-all
 
 engine:
-  id: claude
+  id: copilot
   max-turns: 30
 
 concurrency:

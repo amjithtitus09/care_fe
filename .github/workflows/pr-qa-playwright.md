@@ -19,7 +19,7 @@ if: contains(github.event.pull_request.labels.*.name, 'jira-agent')
 permissions: read-all
 
 engine:
-  id: claude
+  id: copilot
   max-turns: 30
 
 concurrency:

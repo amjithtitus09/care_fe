@@ -21,7 +21,7 @@ if: ${{ github.event.workflow_run.conclusion == 'failure' }}
 permissions: read-all
 
 engine:
-  id: claude
+  id: copilot
   max-turns: 20
 
 concurrency:
