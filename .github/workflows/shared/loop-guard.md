@@ -16,6 +16,11 @@ enforce a hard cap on the number of automated fix attempts for this pull request
    `/tmp/gh-aw/cache-memory/pr-<PR_NUMBER>-fix-attempts.json`, where `<PR_NUMBER>`
    is the number of the pull request you are working on (given in the workflow
    context above). If the file does not exist, treat the current count as `0`.
+   As a durable cross-check (cache memory is best-effort and may be lost between
+   runs), also scan the pull request's existing comments for prior automated
+   fix-attempt markers (comments containing "automated fix attempt"). Use the
+   **higher** of the cached count and the number of those comments as the
+   effective attempt count, so the cap holds even if the cache was evicted.
 
 2. The maximum number of automated attempts is **3**.
 

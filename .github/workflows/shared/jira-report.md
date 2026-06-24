@@ -50,7 +50,7 @@ safe-outputs:
             JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
             JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
             JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
-            PR_TITLE: ${{ github.event.pull_request.title }}
+            PR_TITLE: ${{ github.event.pull_request.title || github.event.issue.title }}
             PR_BRANCH: ${{ github.event.pull_request.head.ref || github.head_ref || github.event.workflow_run.head_branch }}
             PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
             PR_URL: ${{ github.event.pull_request.html_url }}
@@ -83,14 +83,17 @@ safe-outputs:
               }
 
               // --- Derive the JIRA issue key (regex over PR title / branch) -----------
-              const KEY_RE = /\b([A-Z][A-Z0-9]+-\d+)\b/;
+              // JIRA keys are canonically uppercase, but branch names are often
+              // lowercase (e.g. `eng-395-fix`). Match case-insensitively and
+              // normalize so reporting still works off a lowercase branch.
+              const KEY_RE = /\b([A-Za-z][A-Za-z0-9]+-\d+)\b/;
               function deriveKey(item) {
                 if (item.issue_key && KEY_RE.test(item.issue_key)) {
-                  return item.issue_key.match(KEY_RE)[1];
+                  return item.issue_key.match(KEY_RE)[1].toUpperCase();
                 }
                 for (const src of [process.env.PR_TITLE, process.env.PR_BRANCH]) {
                   const m = (src || "").match(KEY_RE);
-                  if (m) return m[1];
+                  if (m) return m[1].toUpperCase();
                 }
                 return null;
               }
@@ -242,7 +245,7 @@ safe-outputs:
             JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
             JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
             JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
-            PR_TITLE: ${{ github.event.pull_request.title }}
+            PR_TITLE: ${{ github.event.pull_request.title || github.event.issue.title }}
             PR_BRANCH: ${{ github.event.pull_request.head.ref || github.head_ref || github.event.workflow_run.head_branch }}
             PR_URL: ${{ github.event.pull_request.html_url }}
           with:
@@ -254,11 +257,11 @@ safe-outputs:
                 core.warning("JIRA secrets not configured; cannot post needs-human signal.");
                 return;
               }
-              const KEY_RE = /\b([A-Z][A-Z0-9]+-\d+)\b/;
+              const KEY_RE = /\b([A-Za-z][A-Za-z0-9]+-\d+)\b/;
               let key = null;
               for (const src of [process.env.PR_TITLE, process.env.PR_BRANCH]) {
                 const m = (src || "").match(KEY_RE);
-                if (m) { key = m[1]; break; }
+                if (m) { key = m[1].toUpperCase(); break; }
               }
               if (!key) {
                 core.warning("No JIRA key derivable; cannot post needs-human signal.");
