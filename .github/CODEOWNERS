@@ -1,2 +1,7 @@
 * @ohcnetwork/care-fe-code-reviewers
 src/types/** @ohcnetwork/core-team
+
+# Fork pilot (amjithtitus09/care_fe): the @ohcnetwork/* teams above do not resolve
+# on a personal fork, so the gh-aw workflow scaffolding under .github/ is owned by
+# the fork owner to satisfy the human merge gate. Additive; upstream is unaffected.
+/.github/ @amjithtitus09
