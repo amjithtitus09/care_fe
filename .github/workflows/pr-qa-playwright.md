@@ -20,13 +20,15 @@ permissions: read-all
 
 engine:
   id: copilot
-  max-turns: 30
+  model: claude-opus-4.8
+
+max-turns: 60
 
 concurrency:
   group: "gh-aw-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}"
   cancel-in-progress: true
 
-timeout-minutes: 30
+timeout-minutes: 45
 
 network:
   allowed:

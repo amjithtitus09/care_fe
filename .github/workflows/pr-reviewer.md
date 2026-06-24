@@ -25,7 +25,9 @@ permissions: read-all
 
 engine:
   id: copilot
-  max-turns: 25
+  model: claude-opus-4.8
+
+max-turns: 40
 
 concurrency:
   group: "gh-aw-${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number || github.run_id }}"
@@ -48,7 +50,7 @@ safe-outputs:
   add-comment:
     max: 1
 
-timeout-minutes: 15
+timeout-minutes: 20
 
 imports:
   - shared/jira-report.md

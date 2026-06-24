@@ -22,7 +22,9 @@ permissions: read-all
 
 engine:
   id: copilot
-  max-turns: 20
+  model: claude-opus-4.8
+
+max-turns: 40
 
 concurrency:
   group: "gh-aw-${{ github.workflow }}-${{ github.event.workflow_run.head_sha }}"
@@ -30,7 +32,7 @@ concurrency:
 
 network: defaults
 
-timeout-minutes: 15
+timeout-minutes: 25
 
 tools:
   cache-memory: true
