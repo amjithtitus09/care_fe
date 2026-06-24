@@ -2837,7 +2837,7 @@
   "slug_format_message": "സ്ലഗ് അക്ഷരങ്ങൾ മാത്രമാകും ഉൾക്കൊള്ളേണ്ടത്",
   "structured_type": "ഘടനാപരമായ തരം",
   "sub_questions": "ഉപചോദ്യങ്ങൾ",
-  "sub_questions_count": "{{ count }} ഉപചോദ്യങ്ങൾ",
+  "sub_questions_count": "{{count}} ഉപചോദ്യങ്ങൾ",
   "total_locations": "ആകെ സ്ഥലങ്ങൾ",
   "total_number_of_beds": "ആകെ കിടക്കകളുടെ എണ്ണം",
   "two_factor_authentication": "ടു ഫാക്ടർ ഓതെന്റിക്കേഷൻ",
