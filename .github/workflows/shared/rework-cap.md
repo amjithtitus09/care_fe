@@ -13,7 +13,10 @@ description: >
 You may hand this pull request back to the GitHub Copilot coding agent for rework
 (via the `assign_to_agent` safe output). The coding agent pushes its fixes as the
 PR author, which re-triggers review and QA automatically — so without a cap this
-could ping-pong indefinitely. You MUST enforce a hard cap.
+could ping-pong indefinitely. You MUST enforce a hard cap. This cap is **shared
+across the reviewer and QA workflows**: both count the same durable hand-back
+markers below, so the limit holds no matter which dimension (review or testing)
+triggers a hand-back.
 
 1. **Read the rework counter** from cache memory at
    `/tmp/gh-aw/cache-memory/pr-<PR_NUMBER>-rework-attempts.json`, where

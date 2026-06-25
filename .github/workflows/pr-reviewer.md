@@ -8,7 +8,7 @@ description: >
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
   issue_comment:
     types: [created]
   # Authorize the GitHub Copilot coding agent (the managed Copilot-for-Jira agent
@@ -18,13 +18,28 @@ on:
   bots: ["Copilot", "copilot-swe-agent"]
 
 # The gh-aw slash_command trigger cannot be combined with pull_request in a
-# single workflow, so the `/review` command is matched explicitly here: activate
-# on PR open/update, or on a `/review` comment posted on a pull request.
+# single workflow, so the `/review` command is matched explicitly here.
+#
+# Label state machine (review dimension): run the reviewer while the PR carries
+# the `needs review` label (added by the repo's pr-automation.yml when a PR is
+# marked ready), and on the Copilot coding agent's own open/rework pushes (the
+# managed agent authors as `Copilot`; its Actions-token-free pushes re-trigger us
+# and let the loop re-arm without fighting GitHub's recursion guard). We do NOT
+# gate on the terminal `reviewed` label here — that would race with the parallel
+# QA dimension and could skip re-review of a rework commit. Instead, redundant
+# work is suppressed per-commit via the cache-memory dedup in Step 1, and the
+# reviewer reconciles the `reviewed` label to its own latest verdict each run.
+# The `/review` comment always forces a fresh pass.
 if: >
-  github.event_name == 'pull_request' ||
   (github.event_name == 'issue_comment' &&
    github.event.issue.pull_request != null &&
-   startsWith(github.event.comment.body, '/review'))
+   startsWith(github.event.comment.body, '/review')) ||
+  (github.event_name == 'pull_request' &&
+   (contains(github.event.pull_request.labels.*.name, 'needs review') ||
+    ((github.event.action == 'opened' ||
+      github.event.action == 'synchronize' ||
+      github.event.action == 'ready_for_review') &&
+     github.event.pull_request.user.login == 'Copilot')))
 
 permissions: read-all
 
@@ -56,8 +71,24 @@ safe-outputs:
     side: "RIGHT"
   submit-pull-request-review:
     max: 1
+    # Submit the review under the agent PAT (not GITHUB_TOKEN) so a REQUEST_CHANGES
+    # verdict actually fires the repo's existing pr-review-trigger.yml ->
+    # pr-automation.yml chain, which swaps the PR to the `changes required` label and
+    # removes the needs-* labels. A review submitted with GITHUB_TOKEN would be
+    # suppressed by GitHub's recursion guard and never trigger that chain. Falls back
+    # to GITHUB_TOKEN (verdict still posts, label swap just won't fire) until the PAT
+    # is configured.
+    github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
   add-comment:
     max: 1
+  # Drive the review dimension of the label state machine. On APPROVE we mark
+  # `reviewed`; on escalation we flag `needs-human`. (`needs review` / `changes
+  # required` are owned by pr-automation.yml; we only clean them up / invalidate
+  # stale verdicts via remove-labels.)
+  add-labels:
+    allowed: [reviewed, needs-human]
+  remove-labels:
+    allowed: ["needs review", "changes required", "reviewed"]
   # Autonomous rework: on REQUEST_CHANGES, hand the PR back to the Copilot coding
   # agent. It pushes fixes as the PR author, which re-triggers review + QA (and, as
   # the author, passes gh-aw's confused-deputy guard). Requires the GH_AW_AGENT_TOKEN
@@ -65,9 +96,6 @@ safe-outputs:
   assign-to-agent:
     max: 1
     target: "triggering"
-  # Escalation when the rework cap is reached.
-  add-labels:
-    allowed: [needs-human]
 
 timeout-minutes: 20
 
@@ -153,11 +181,27 @@ Submit exactly one review with `submit-pull-request-review`, setting `event`:
 Keep the summary body to a few sentences: the overall assessment and the themes
 of any required changes.
 
-## Step 6 — Hand back to the coding agent on REQUEST_CHANGES
+## Step 6 — Update the workflow labels
+
+Drive the **review dimension** of the repository's label state machine based on
+your verdict. You own only the terminal `reviewed` label; the repo's
+`pr-automation.yml` owns `needs review` / `needs testing` / `changes required`.
+Always reconcile `reviewed` to your *current* verdict so it never goes stale:
+
+- **APPROVE** — emit `add_labels` with `reviewed`, and `remove_labels` for
+  `needs review` and `changes required`.
+- **REQUEST_CHANGES** — do **not** set `changes required` yourself: your
+  REQUEST_CHANGES review (submitted under the agent token) triggers
+  `pr-review-trigger.yml` → `pr-automation.yml`, which applies `changes required`
+  and removes the needs-* labels. Also emit `remove_labels` for `reviewed` to clear
+  any stale approval left from an earlier commit.
+- **COMMENT** — leave all workflow labels unchanged.
+
+## Step 7 — Hand back to the coding agent on REQUEST_CHANGES
 
 This workflow is the rework trigger for the autonomous loop. Only act on this step
 when your verdict in Step 5 was **REQUEST_CHANGES**. For `APPROVE` or `COMMENT`,
-skip to Step 7.
+skip to Step 8.
 
 Also treat the PR as needing rework if it already carries a blocking signal from
 the rest of the loop — an existing QA comment (🎭 Visual QA) reporting 🔴 Critical
@@ -174,7 +218,7 @@ the cap is hit.
 
 {{#runtime-import shared/rework-cap.md}}
 
-## Step 7 — Record and report
+## Step 8 — Record and report
 
 - Write `/tmp/gh-aw/cache-memory/reviewed-${{ github.event.pull_request.head.sha }}.json`
   with the timestamp, verdict, and number of comments posted, so the same commit
