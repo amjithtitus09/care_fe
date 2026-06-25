@@ -11,6 +11,11 @@ on:
     types: [opened, synchronize, reopened]
   issue_comment:
     types: [created]
+  # Authorize the GitHub Copilot coding agent (the managed Copilot-for-Jira agent
+  # opens PRs as the `Copilot` actor / `copilot-swe-agent[bot]` App). Without this,
+  # gh-aw's activation gate denies the run because the bot holds no repo role.
+  # Listed bots are still verified as active/installed before activation.
+  bots: ["Copilot", "copilot-swe-agent"]
 
 # The gh-aw slash_command trigger cannot be combined with pull_request in a
 # single workflow, so the `/review` command is matched explicitly here: activate
