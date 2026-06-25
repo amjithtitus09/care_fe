@@ -12,6 +12,10 @@ on:
     types: [opened, synchronize, reopened, labeled]
     paths:
       - "src/**"
+  # Authorize the GitHub Copilot coding agent so QA re-runs on the agent's
+  # follow-up pushes (synchronize) after a human opts the PR into the pipeline
+  # with the `jira-agent` label. Listed bots are verified active before activation.
+  bots: ["Copilot", "copilot-swe-agent"]
 
 # Pilot scoping: only run for PRs explicitly opted into the JIRA agent pipeline.
 if: contains(github.event.pull_request.labels.*.name, 'jira-agent')
