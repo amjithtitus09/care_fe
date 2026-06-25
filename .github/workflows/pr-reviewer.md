@@ -43,7 +43,11 @@ network: defaults
 tools:
   cache-memory: true
   github:
-    lockdown: true
+    # Integrity filtering (replaces the deprecated `lockdown: true`). `approved`
+    # lets the agent read OWNER/MEMBER/COLLABORATOR and non-fork PR content (which
+    # is what the managed Copilot agent opens) while filtering out lower-trust
+    # content, and — unlike `lockdown: true` — needs no custom GitHub token.
+    min-integrity: approved
     toolsets: [pull_requests, repos]
 
 safe-outputs:
@@ -54,6 +58,16 @@ safe-outputs:
     max: 1
   add-comment:
     max: 1
+  # Autonomous rework: on REQUEST_CHANGES, hand the PR back to the Copilot coding
+  # agent. It pushes fixes as the PR author, which re-triggers review + QA (and, as
+  # the author, passes gh-aw's confused-deputy guard). Requires the GH_AW_AGENT_TOKEN
+  # fine-grained PAT (magic secret, auto-wired); until it is set this step no-ops.
+  assign-to-agent:
+    max: 1
+    target: "triggering"
+  # Escalation when the rework cap is reached.
+  add-labels:
+    allowed: [needs-human]
 
 timeout-minutes: 20
 
@@ -139,7 +153,28 @@ Submit exactly one review with `submit-pull-request-review`, setting `event`:
 Keep the summary body to a few sentences: the overall assessment and the themes
 of any required changes.
 
-## Step 6 — Record and report
+## Step 6 — Hand back to the coding agent on REQUEST_CHANGES
+
+This workflow is the rework trigger for the autonomous loop. Only act on this step
+when your verdict in Step 5 was **REQUEST_CHANGES**. For `APPROVE` or `COMMENT`,
+skip to Step 7.
+
+Also treat the PR as needing rework if it already carries a blocking signal from
+the rest of the loop — an existing QA comment (🎭 Visual QA) reporting 🔴 Critical
+issues, or a CI diagnosis comment (🩺) for a failing required check. Fold those into
+the summary of required changes you hand back.
+
+Follow the **Rework loop control and escalation** rules below (hand-back cap = 3).
+If the cap is reached, escalate (`needs-human` label + comment + `jira_report` with
+`status: needs-human`) instead of handing back. Otherwise emit the `assign_to_agent`
+safe output to assign the Copilot coding agent to this pull request with a concise
+summary of the required changes; it pushes fixes as the PR author, which
+automatically re-triggers this review and the QA workflow until the PR is clean or
+the cap is hit.
+
+{{#runtime-import shared/rework-cap.md}}
+
+## Step 7 — Record and report
 
 - Write `/tmp/gh-aw/cache-memory/reviewed-${{ github.event.pull_request.head.sha }}.json`
   with the timestamp, verdict, and number of comments posted, so the same commit

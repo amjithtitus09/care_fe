@@ -38,7 +38,10 @@ tools:
   cache-memory: true
   web-fetch:
   github:
-    lockdown: true
+    # Integrity filtering replaces the deprecated `lockdown: true` (which now
+    # hard-requires a custom token at runtime). `approved` keeps untrusted-content
+    # hardening with no token required.
+    min-integrity: approved
     toolsets: [actions, pull_requests, repos]
 
 safe-outputs:

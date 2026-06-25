@@ -17,8 +17,13 @@ on:
   # with the `jira-agent` label. Listed bots are verified active before activation.
   bots: ["Copilot", "copilot-swe-agent"]
 
-# Pilot scoping: only run for PRs explicitly opted into the JIRA agent pipeline.
-if: contains(github.event.pull_request.labels.*.name, 'jira-agent')
+# Pilot scoping: auto-run QA for Copilot-authored (JIRA agent) PRs, and for any
+# PR a human explicitly opts in with the `jira-agent` label. The managed Copilot
+# agent opens PRs as the `Copilot` user, so this closes the review->QA hop without
+# needing a manual label on every agent PR.
+if: >
+  github.event.pull_request.user.login == 'Copilot' ||
+  contains(github.event.pull_request.labels.*.name, 'jira-agent')
 
 permissions: read-all
 
@@ -45,7 +50,10 @@ tools:
   playwright:
     mode: cli
   github:
-    lockdown: true
+    # Integrity filtering replaces the deprecated `lockdown: true` (which now
+    # hard-requires a custom token at runtime). `approved` keeps untrusted-content
+    # hardening with no token required.
+    min-integrity: approved
     toolsets: [pull_requests, repos]
   bash:
     - "npm ci*"
