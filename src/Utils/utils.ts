@@ -448,3 +448,5 @@ export const goBack = (fallback?: string) => {
   }
   history.back();
 };
+
+// QA pipeline smoke-test marker (throwaway; do not merge)
