@@ -51,7 +51,6 @@ network:
     - defaults
     - node
     - playwright
-    - host.docker.internal
 
 tools:
   cache-memory: true
@@ -97,17 +96,18 @@ safe-outputs:
     target: "triggering"
 
 # Build the PR head on the runner and start a preview server BEFORE the agent runs.
-# The gh-aw agent executes inside a firewall sandbox where node/npm are not usable
-# and where only host ports 80/443/8080 are reachable, so the app must already be
-# built and served here on :8080. The agent then only drives playwright-cli against
-# it (see https://github.github.com/gh-aw/reference/playwright/ — CLI mode).
+# The gh-aw agent executes inside a firewall sandbox where node/npm are not usable,
+# so the app must already be built and served here. In CLI mode the agent reaches the
+# dev server on localhost directly (Playwright allows localhost/127.0.0.1 by default).
+# Use port 4000 (NOT 8080 — gh-aw's MCP gateway binds host port 8080, so a preview on
+# 8080 collides with it). See https://github.github.com/gh-aw/reference/playwright/.
 steps:
   - name: Set up Node.js
     uses: actions/setup-node@v6
     with:
       node-version-file: .node-version
       cache: npm
-  - name: Build PR head and start preview server on :8080
+  - name: Build PR head and start preview server on :4000
     env:
       NODE_OPTIONS: "--max-old-space-size=4096"
     run: |
@@ -117,16 +117,16 @@ steps:
       git log --oneline -2 || true
       npm ci --prefer-offline --no-audit --no-fund
       npm run build
-      nohup npm run preview -- --host 0.0.0.0 --port 8080 \
+      nohup npm run preview -- --host 0.0.0.0 --port 4000 \
         > /tmp/gh-aw/agent/preview.log 2>&1 &
-      echo "Waiting for the preview server on http://localhost:8080 ..."
+      echo "Waiting for the preview server on http://localhost:4000 ..."
       for i in $(seq 1 60); do
-        curl -sf http://localhost:8080/ >/dev/null 2>&1 && break
+        curl -sf http://localhost:4000/ >/dev/null 2>&1 && break
         sleep 2
       done
-      if curl -sf http://localhost:8080/ >/dev/null 2>&1; then
+      if curl -sf http://localhost:4000/ >/dev/null 2>&1; then
         echo "up" > /tmp/gh-aw/agent/preview-status.txt
-        echo "preview server is up on :8080"
+        echo "preview server is up on :4000"
       else
         # Do not fail the job: let the agent report the build failure gracefully.
         echo "down" > /tmp/gh-aw/agent/preview-status.txt
@@ -141,7 +141,7 @@ imports:
 # care_fe Visual QA (Playwright)
 
 You are a visual QA specialist. A production preview of **this pull request** has
-already been built and is running at `http://localhost:8080` (started by a setup
+already been built and is running at `http://localhost:4000` (started by a setup
 step on the runner). Your job is to capture screenshots of the affected flows with
 `playwright-cli` and summarize the visual and functional impact.
 
@@ -161,7 +161,7 @@ arbitrary scripts from the PR.
 - **Repository**: ${{ github.repository }}
 - **PR number**: ${{ github.event.pull_request.number }}
 - **PR head**: ${{ github.event.pull_request.head.sha }}
-- **Preview URL**: http://localhost:8080 (PR head, already built and serving)
+- **Preview URL**: http://localhost:4000 (PR head, already built and serving)
 - **Backend**: none in this pilot, so authenticated routes render the login screen.
   The public landing/login page renders fully; treat it as the primary smoke check.
 
@@ -205,21 +205,21 @@ backend in this pilot.
 
 ## Step 3 — Capture screenshots of the PR head
 
-The PR-head preview is already running at `http://localhost:8080`. Confirm it is
+The PR-head preview is already running at `http://localhost:4000`. Confirm it is
 reachable, then screenshot each selected route at three viewports — mobile
 (390×844), tablet (768×1024), desktop (1366×768):
 
 ```bash
-curl -sf http://localhost:8080/ >/dev/null && echo "server reachable"
+curl -sf http://localhost:4000/ >/dev/null && echo "server reachable"
 mkdir -p /tmp/gh-aw/agent
 playwright-cli browser_resize --width 390 --height 844
-playwright-cli browser_navigate --url "http://localhost:8080/<route>"
+playwright-cli browser_navigate --url "http://localhost:4000/<route>"
 playwright-cli browser_take_screenshot --filename /tmp/gh-aw/agent/<route>-mobile.png --full-page true
 ```
 
 Notes:
 - If a navigation cannot connect on `localhost`, retry the same path against
-  `http://host.docker.internal:8080/...`.
+  `http://127.0.0.1:4000/...`.
 - Give each route a moment to render (`sleep 2`) before screenshotting.
 - For any route that shows an error overlay or a blank page, also capture
   `playwright-cli browser_snapshot` so you can describe what went wrong.
