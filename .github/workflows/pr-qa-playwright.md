@@ -120,12 +120,13 @@ steps:
       git log --oneline -2 || true
       npm ci --prefer-offline --no-audit --no-fund
       npm run build
-      # Serve the built SPA on host port 80 (privileged → sudo). serve does not enforce
-      # a Host-header allowlist, so requests to host.docker.internal are accepted.
+      # Serve the built SPA on host port 80 (privileged → sudo). The vite build
+      # output dir is `build/` (vite.config.mts outDir), not `dist/`. serve does not
+      # enforce a Host-header allowlist, so host.docker.internal requests are accepted.
       npm i -g serve@14 || true
       SERVE_BIN="$(command -v serve || true)"
       if [ -n "$SERVE_BIN" ]; then
-        sudo -E env "PATH=$PATH" nohup "$SERVE_BIN" -s dist -l 80 \
+        sudo -E env "PATH=$PATH" nohup "$SERVE_BIN" -s build -l 80 \
           > /tmp/gh-aw/agent/preview.log 2>&1 &
       fi
       echo "Waiting for the preview server on http://localhost:80 ..."
