@@ -23,10 +23,14 @@ permissions:
 jobs:
   assign-pr:
     runs-on: ubuntu-24.04-arm
-    # Only run for pull_request_target events and skip PRs created by bots
+    # Only run for pull_request_target events. Skip PRs created by bots, EXCEPT the
+    # managed GitHub Copilot coding agent (JIRA pilot) — its PRs must enter the same
+    # "needs testing" / "needs review" label state machine as human PRs so the
+    # gh-aw reviewer and QA workflows can pick them up.
     if: >-
       github.event_name == 'pull_request_target' &&
-      github.event.pull_request.user.type != 'Bot'
+      (github.event.pull_request.user.type != 'Bot' ||
+       contains(fromJSON('["Copilot", "copilot-swe-agent"]'), github.event.pull_request.user.login))
 
     steps:
       - name: Generate token
