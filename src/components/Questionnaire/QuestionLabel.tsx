@@ -46,7 +46,9 @@ export function QuestionLabel({
             </span>
             {question.required && <span className="ml-1 text-red-500">*</span>}
           </span>
-          {unitText && <span className="text-sm text-gray-500">({unitText})</span>}
+          {unitText && (
+            <span className="text-sm text-gray-500">({unitText})</span>
+          )}
         </div>
       </div>
     </Label>
