@@ -339,7 +339,7 @@ const Login = (props: LoginProps) => {
                     <img
                       src={logo.dark}
                       className="h-14 rounded-lg py-3"
-                      alt="state logo"
+                      alt={t("state_logo_alt")}
                     />
                   </div>
                 ) : null,
