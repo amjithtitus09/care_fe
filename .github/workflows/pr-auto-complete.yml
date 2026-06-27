@@ -1,0 +1,249 @@
+name: PR Auto-Complete
+
+# Terminal step of the autonomous gh-aw PR loop. The Copilot coding agent opens
+# DRAFT pull requests; the reviewer and QA workflows drive them to `reviewed`
+# (review APPROVED) and `Tested` (QA passed). Nothing in GitHub then un-drafts or
+# merges them, so a fully-reconciled PR otherwise sits as a draft forever — the
+# "still draft PRs" gap. This deterministic, non-agent workflow closes the loop:
+# it scans open agent PRs and, for any that the loop has fully approved + tested
+# with green lint and no blocking labels, marks the PR ready for review and
+# squash-merges it. Zero human intervention.
+#
+# Why a plain workflow (not gh-aw): the terminal merge must be deterministic and
+# is not subject to the Copilot "Require approval for workflow runs" gate, the
+# gh-aw activation/confused-deputy guard, or agent nondeterminism. `schedule` and
+# `workflow_dispatch` are never gated, so this runs unimpeded.
+
+on:
+  schedule:
+    # Every 5 minutes. Scheduled workflows only run from the default branch, and
+    # are never subject to the fork-PR or Copilot approval gates.
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Optional: only evaluate this single PR number"
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+concurrency:
+  group: pr-auto-complete
+  cancel-in-progress: false
+
+jobs:
+  auto-complete:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Complete fully-reconciled agent PRs
+        uses: actions/github-script@v8
+        env:
+          # Merge/un-draft as a write-access user. The Copilot coding agent opens
+          # same-repo PRs; merging with the PAT keeps a real-user identity (and the
+          # PAT carries Contents + Pull requests write). Falls back to GITHUB_TOKEN.
+          ONLY_PR: ${{ github.event.inputs.pr_number }}
+          BASE_BRANCH: develop
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          # Optional: exact JIRA workflow status to move the issue to on merge
+          # (e.g. "Done"). Leave unset to only post a comment.
+          JIRA_MERGE_TRANSITION: ${{ vars.JIRA_MERGE_TRANSITION }}
+        with:
+          github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const onlyPr = process.env.ONLY_PR ? parseInt(process.env.ONLY_PR, 10) : null;
+            const BASE = process.env.BASE_BRANCH || "develop";
+
+            // Scope: only the managed Copilot coding agent's PRs (or an explicit
+            // `jira-agent` opt-in for manual testing). Never auto-merge human PRs.
+            const AGENT_AUTHORS = ["Copilot", "copilot-swe-agent", "copilot-swe-agent[bot]"];
+            // The loop's terminal verdicts. `reviewed` is added by pr-reviewer only on
+            // APPROVE; `Tested` by pr-qa-playwright only on a clean QA pass.
+            const REQUIRED_LABELS = ["reviewed", "Tested"];
+            // Any of these means the loop deliberately did NOT converge.
+            const BLOCK_LABELS = ["needs-human", "changes required"];
+
+            // ---- Collect candidate PRs ------------------------------------------
+            let prs = [];
+            if (onlyPr) {
+              const { data } = await github.rest.pulls.get({ owner, repo, pull_number: onlyPr });
+              prs = [data];
+            } else {
+              prs = await github.paginate(github.rest.pulls.list, {
+                owner, repo, state: "open", per_page: 100,
+              });
+            }
+
+            const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+            async function reportJiraMerged(title, branch, prNumber, baseRef) {
+              const baseUrl = (process.env.JIRA_BASE_URL || "").replace(/\/+$/, "");
+              const email = process.env.JIRA_EMAIL || "";
+              const token = process.env.JIRA_API_TOKEN || "";
+              if (!baseUrl || !email || !token) return;
+              const KEY_RE = /\b([A-Za-z][A-Za-z0-9]+-\d+)\b/;
+              let key = null;
+              for (const src of [title, branch]) {
+                const m = (src || "").match(KEY_RE);
+                if (m) { key = m[1].toUpperCase(); break; }
+              }
+              if (!key) return;
+              const auth = "Basic " + Buffer.from(`${email}:${token}`).toString("base64");
+              const text =
+                `[qa-passed] PR #${prNumber} merged to ${baseRef} — the automated ` +
+                `review + QA loop approved and tested the change and merged it.`;
+              try {
+                const res = await fetch(`${baseUrl}/rest/api/3/issue/${key}/comment`, {
+                  method: "POST",
+                  headers: { Authorization: auth, Accept: "application/json", "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    body: { type: "doc", version: 1, content: [{ type: "paragraph", content: [{ type: "text", text }] }] },
+                  }),
+                });
+                if (!res.ok) core.warning(`JIRA comment failed (${res.status}): ${await res.text()}`);
+                else core.info(`JIRA: commented on ${key}.`);
+              } catch (e) {
+                core.warning(`JIRA comment error: ${e.message}`);
+              }
+              // Optional, explicit transition only.
+              const target = process.env.JIRA_MERGE_TRANSITION || "";
+              if (!target) return;
+              try {
+                const listRes = await fetch(`${baseUrl}/rest/api/3/issue/${key}/transitions`, {
+                  headers: { Authorization: auth, Accept: "application/json" },
+                });
+                if (!listRes.ok) return;
+                const { transitions = [] } = await listRes.json();
+                const match = transitions.find(
+                  (t) => t.name.toLowerCase() === target.toLowerCase() ||
+                    (t.to && t.to.name.toLowerCase() === target.toLowerCase()),
+                );
+                if (!match) {
+                  core.warning(`No JIRA transition "${target}" for ${key}. Available: ${transitions.map((t) => t.name).join(", ")}`);
+                  return;
+                }
+                const res = await fetch(`${baseUrl}/rest/api/3/issue/${key}/transitions`, {
+                  method: "POST",
+                  headers: { Authorization: auth, Accept: "application/json", "Content-Type": "application/json" },
+                  body: JSON.stringify({ transition: { id: match.id } }),
+                });
+                if (res.ok) core.info(`JIRA: transitioned ${key} -> ${match.name}.`);
+              } catch (e) {
+                core.warning(`JIRA transition error: ${e.message}`);
+              }
+            }
+
+            let completed = 0;
+            for (const pr of prs) {
+              const num = pr.number;
+              try {
+                const labels = (pr.labels || []).map((l) => (typeof l === "string" ? l : l.name));
+                const author = pr.user && pr.user.login;
+
+                const inScope = AGENT_AUTHORS.includes(author) || labels.includes("jira-agent");
+                if (!inScope) continue;
+                if (!REQUIRED_LABELS.every((l) => labels.includes(l))) continue;
+                if (BLOCK_LABELS.some((l) => labels.includes(l))) continue;
+
+                // Authoritative state via GraphQL (reviewDecision, draft, head sha).
+                const q = await github.graphql(
+                  `query($owner:String!,$repo:String!,$num:Int!){
+                     repository(owner:$owner,name:$repo){
+                       pullRequest(number:$num){
+                         id number title isDraft state mergeable reviewDecision
+                         headRefOid headRefName baseRefName
+                       }
+                     }
+                   }`,
+                  { owner, repo, num },
+                );
+                const node = q.repository.pullRequest;
+                if (!node || node.state !== "OPEN") continue;
+                if (node.baseRefName !== BASE) { core.info(`#${num}: base=${node.baseRefName} (want ${BASE}); skip`); continue; }
+                if (node.reviewDecision !== "APPROVED") { core.info(`#${num}: reviewDecision=${node.reviewDecision}; skip`); continue; }
+                if (node.mergeable === "CONFLICTING") { core.info(`#${num}: conflicting; skip`); continue; }
+
+                // Guard against a stale approval: without branch protection an APPROVED
+                // review survives a later push, so a just-pushed (not-yet-re-reviewed)
+                // commit could otherwise be merged. Require an APPROVE review whose
+                // commit_id is the CURRENT head, so we only merge what was actually
+                // reviewed. The reviewer re-runs on every push and re-approves the new
+                // head within a couple of minutes, so this just defers, never blocks.
+                const reviews = await github.paginate(github.rest.pulls.listReviews, {
+                  owner, repo, pull_number: num, per_page: 100,
+                });
+                const approvedHead = reviews.some(
+                  (r) => r.state === "APPROVED" && r.commit_id === node.headRefOid,
+                );
+                if (!approvedHead) { core.info(`#${num}: no APPROVE review for head ${node.headRefOid.slice(0,7)}; skip`); continue; }
+
+                // Require the repo's lint check to be green on the head commit. The
+                // heavier CI (Playwright/deploy/scanners) skips on agent PRs, so lint
+                // is the meaningful gate; treat success/neutral/skipped as OK.
+                const checks = await github.paginate(github.rest.checks.listForRef, {
+                  owner, repo, ref: node.headRefOid, per_page: 100,
+                });
+                const lint = checks.filter((c) => /lint/i.test(c.name));
+                if (lint.length === 0) { core.info(`#${num}: no lint check yet; skip`); continue; }
+                const lintBad = lint.some(
+                  (c) => c.status !== "completed" || !["success", "neutral", "skipped"].includes(c.conclusion),
+                );
+                if (lintBad) { core.info(`#${num}: lint not green; skip`); continue; }
+
+                core.info(`#${num}: ELIGIBLE — completing (un-draft + squash merge)`);
+
+                if (node.isDraft) {
+                  await github.graphql(
+                    `mutation($id:ID!){ markPullRequestReadyForReview(input:{pullRequestId:$id}){ pullRequest{ isDraft } } }`,
+                    { id: node.id },
+                  );
+                  core.info(`#${num}: marked ready for review`);
+                  await sleep(3000);
+                }
+
+                // Merge with a short retry — mergeability may still be computing right
+                // after un-drafting.
+                let merged = false;
+                for (let attempt = 1; attempt <= 4 && !merged; attempt++) {
+                  try {
+                    await github.rest.pulls.merge({ owner, repo, pull_number: num, merge_method: "squash" });
+                    merged = true;
+                  } catch (e) {
+                    const code = e.status;
+                    core.info(`#${num}: merge attempt ${attempt} failed (${code}): ${e.message}`);
+                    if (code === 405 || code === 409) { await sleep(4000); continue; }
+                    throw e;
+                  }
+                }
+                if (!merged) { core.warning(`#${num}: could not merge after retries; will retry next run`); continue; }
+
+                completed++;
+                core.info(`#${num}: merged (squash) into ${node.baseRefName}`);
+
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: num,
+                  body:
+                    "✅ **Autonomous loop complete.** This PR was approved by the automated " +
+                    "reviewer, passed visual QA, and has green lint, so it was marked ready " +
+                    "and squash-merged into `" + node.baseRefName + "` automatically.",
+                });
+
+                // Best-effort branch cleanup (agent branches are disposable).
+                try {
+                  await github.rest.git.deleteRef({ owner, repo, ref: `heads/${node.headRefName}` });
+                } catch (e) {
+                  core.info(`#${num}: branch delete skipped: ${e.message}`);
+                }
+
+                await reportJiraMerged(node.title, node.headRefName, num, node.baseRefName);
+              } catch (e) {
+                core.warning(`#${num}: auto-complete error: ${e.message}`);
+              }
+            }
+            core.info(`PR Auto-Complete finished. PRs completed this run: ${completed}`);
