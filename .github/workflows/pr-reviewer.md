@@ -105,18 +105,17 @@ safe-outputs:
     allowed: [reviewed, needs-human]
   remove-labels:
     allowed: ["needs review", "changes required", "reviewed"]
-  # Autonomous rework: on REQUEST_CHANGES, hand the PR back to the Copilot coding
-  # agent. It pushes fixes as the PR author, which re-triggers review + QA (and, as
-  # the author, passes gh-aw's confused-deputy guard). Requires the GH_AW_AGENT_TOKEN
-  # fine-grained PAT (magic secret, auto-wired); until it is set this step no-ops.
-  assign-to-agent:
-    max: 1
-    target: "triggering"
+  # Autonomous rework hand-back is provided by the imported shared/request-rework.md
+  # as the `request_rework` custom job (posts an `@copilot` comment under the agent
+  # PAT). It replaces gh-aw's built-in `assign-to-agent`, which can't assign the
+  # Copilot coding agent (REST `assignees` returns 404 for it) and wouldn't start a
+  # rework session on an existing PR anyway — an `@copilot` comment does.
 
 timeout-minutes: 20
 
 imports:
   - shared/jira-report.md
+  - shared/request-rework.md
 ---
 
 # care_fe Pull Request Reviewer
@@ -226,11 +225,11 @@ the summary of required changes you hand back.
 
 Follow the **Rework loop control and escalation** rules below (hand-back cap = 3).
 If the cap is reached, escalate (`needs-human` label + comment + `jira_report` with
-`status: needs-human`) instead of handing back. Otherwise emit the `assign_to_agent`
-safe output to assign the Copilot coding agent to this pull request with a concise
-summary of the required changes; it pushes fixes as the PR author, which
-automatically re-triggers this review and the QA workflow until the PR is clean or
-the cap is hit.
+`status: needs-human`) instead of handing back. Otherwise call the `request_rework`
+tool with a concise summary of the required changes; it posts an `@copilot` comment
+that starts a new Copilot coding-agent session. The agent pushes fixes to the PR
+branch, which automatically re-triggers this review and the QA workflow until the PR
+is clean or the cap is hit.
 
 {{#runtime-import shared/rework-cap.md}}
 

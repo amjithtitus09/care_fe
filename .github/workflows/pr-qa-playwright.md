@@ -95,12 +95,11 @@ safe-outputs:
     allowed: ["Tested", "changes required", "needs-human"]
   remove-labels:
     allowed: ["needs testing", "changes required", "Tested"]
-  # Autonomous rework: on critical QA findings, hand the PR back to the Copilot
-  # coding agent (shares the durable rework cap with the reviewer). Requires the
-  # GH_AW_AGENT_TOKEN PAT (auto-wired); no-ops until configured.
-  assign-to-agent:
-    max: 1
-    target: "triggering"
+  # Autonomous rework hand-back is provided by the imported shared/request-rework.md
+  # as the `request_rework` custom job (posts an `@copilot` comment under the agent
+  # PAT), sharing the durable rework cap with the reviewer. It replaces gh-aw's
+  # built-in `assign-to-agent` (which can't assign the Copilot coding agent and
+  # wouldn't start a rework session on an existing PR).
 
 # Build the PR head on the runner and start a preview server BEFORE the agent runs.
 # The gh-aw agent executes inside a firewall sandbox where node/npm are not usable,
@@ -152,6 +151,7 @@ steps:
 
 imports:
   - shared/jira-report.md
+  - shared/request-rework.md
 ---
 
 # care_fe Visual QA (Playwright)
