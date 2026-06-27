@@ -8,7 +8,13 @@ description: >
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, labeled]
+    # `labeled` is intentionally omitted. On the Copilot agent's PRs the repo's
+    # label-automation bot adds labels moments after open; those bot-actor
+    # `labeled` runs (which the activation guard correctly refuses) would cancel
+    # the valid author-triggered run via `concurrency.cancel-in-progress`,
+    # leaving the PR un-reviewed. The `needs review` label is still honored in
+    # `if:` on the opened/synchronize runs.
+    types: [opened, synchronize, reopened, ready_for_review]
   issue_comment:
     types: [created]
   # Authorize the GitHub Copilot coding agent (the managed Copilot-for-Jira agent
