@@ -55,8 +55,18 @@ engine:
 
 max-turns: 40
 
+# Discriminate the concurrency group by event type. Every comment on the PR
+# (QA results, CI diagnosis, the rework hand-back — all bot-authored) arrives as
+# an `issue_comment` and spawns a run, because gh-aw only matches the `/review`
+# command *after* the run starts (the non-matching ones then skip). Without the
+# `event_name` suffix those skip-bound issue_comment runs share a group with the
+# real `pull_request` review and, under `cancel-in-progress`, cancel it
+# mid-flight — exactly the race that killed the reviewer on a clean commit. With
+# the suffix, cancel-in-progress still applies *within* an event type (a new
+# `synchronize` supersedes an older review; a fresh `/review` supersedes a prior
+# one) but comments can no longer cancel the commit-triggered review.
 concurrency:
-  group: "gh-aw-${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number || github.run_id }}"
+  group: "gh-aw-${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number || github.run_id }}-${{ github.event_name }}"
   cancel-in-progress: true
 
 network: defaults
