@@ -3,6 +3,8 @@
 # verifies that the encounter Responses surface renders a unit *display*. No agent.
 name: _seed-validate
 on:
+  push:
+    branches: [qa-seed-validate]
   workflow_dispatch:
 
 permissions:
