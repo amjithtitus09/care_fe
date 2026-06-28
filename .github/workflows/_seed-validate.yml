@@ -1,0 +1,143 @@
+# THROWAWAY validator for the QA data-seed (NOT part of the loop; deleted after use).
+# Boots the care backend exactly as pr-qa-playwright.md does, runs the seed, and
+# verifies that the encounter Responses surface renders a unit *display*. No agent.
+name: _seed-validate
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout care_fe (frontend)
+        uses: actions/checkout@v4
+
+      - name: Checkout ohcnetwork/care into care
+        uses: actions/checkout@v4
+        with:
+          repository: ohcnetwork/care
+          ref: develop
+          path: care
+
+      - name: Boot the care backend with fixtures and mint a fixture token
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          mkdir -p /tmp/gh-aw/agent
+          echo "down" > /tmp/gh-aw/agent/backend-status.txt
+          if [ ! -f care/Makefile ]; then
+            echo "::warning::care backend checkout missing"
+            exit 0
+          fi
+          cd care
+          echo DISABLE_RATELIMIT=True >> docker/.local.env
+          echo JWKS_BASE64=\"$(cat ../.github/runner-files/jwks.b64.txt)\" >> docker/.local.env
+          echo MAX_QUESTIONNAIRE_TEXT_RESPONSE_SIZE=500 >> docker/.local.env
+          if ! make docker_config_file=docker-compose.local.yaml up load-fixtures; then
+            echo "::warning::backend failed to start"
+            exit 0
+          fi
+          cd ..
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /tmp/gh-aw/agent/auth.json -w '%{http_code}' \
+              http://localhost:9000/api/v1/auth/login/ \
+              -X POST -H 'Content-Type: application/json' \
+              -d '{"username":"admin","password":"admin"}' || true)
+            if [ "$code" = "200" ] && grep -q '"access"' /tmp/gh-aw/agent/auth.json 2>/dev/null; then
+              echo "up" > /tmp/gh-aw/agent/backend-status.txt
+              echo "backend up; fixture token minted"
+              break
+            fi
+            sleep 3
+          done
+          if ! grep -q '^up$' /tmp/gh-aw/agent/backend-status.txt; then
+            echo "::warning::backend did not become ready"
+            rm -f /tmp/gh-aw/agent/auth.json
+          fi
+
+      - name: Seed a unit-bearing questionnaire response (and verify)
+        run: |
+          set -uo pipefail
+          SEED_FILE=/tmp/gh-aw/agent/seed.txt
+          echo "unseeded" > "$SEED_FILE"
+          if ! grep -q '^up$' /tmp/gh-aw/agent/backend-status.txt 2>/dev/null; then
+            echo "::warning::backend down; skipping seed"; exit 0
+          fi
+          TOKEN=$(jq -r '.access // empty' /tmp/gh-aw/agent/auth.json 2>/dev/null || true)
+          if [ -z "$TOKEN" ]; then echo "::warning::no fixture token; skipping seed"; exit 0; fi
+          B=http://localhost:9000
+          AUTH="Authorization: Bearer $TOKEN"
+          CT="Content-Type: application/json"
+
+          echo "::group::discover org"
+          SLUG0=$(curl -s "$B/api/v1/questionnaire/?limit=1" -H "$AUTH" | jq -r '.results[0].slug // empty')
+          echo "existing questionnaire slug: $SLUG0"
+          ORG=""
+          if [ -n "$SLUG0" ]; then
+            ORGJSON=$(curl -s "$B/api/v1/questionnaire/$SLUG0/get_organizations/" -H "$AUTH")
+            echo "get_organizations: $(echo "$ORGJSON" | head -c 300)"
+            ORG=$(echo "$ORGJSON" | jq -r '(.results[0].id // .[0].id) // empty')
+          fi
+          if [ -z "$ORG" ]; then
+            ORG=$(curl -s "$B/api/v1/organization/?limit=1" -H "$AUTH" | jq -r '.results[0].id // empty')
+          fi
+          echo "org=$ORG"
+          echo "::endgroup::"
+          if [ -z "$ORG" ]; then echo "::error::no organization found"; exit 0; fi
+
+          echo "::group::discover encounter/patient/facility"
+          ENCJSON=$(curl -s "$B/api/v1/encounter/?limit=1" -H "$AUTH")
+          echo "encounter list: $(echo "$ENCJSON" | head -c 400)"
+          ENC=$(echo "$ENCJSON" | jq -r '.results[0].id // empty')
+          PAT=$(echo "$ENCJSON" | jq -r '.results[0].patient.id // empty')
+          FAC=$(echo "$ENCJSON" | jq -r '(.results[0].facility.id // .results[0].facility) // empty')
+          echo "enc=$ENC pat=$PAT fac=$FAC"
+          echo "::endgroup::"
+          if [ -z "$ENC" ] || [ -z "$PAT" ] || [ -z "$FAC" ]; then echo "::error::no encounter/patient/facility"; exit 0; fi
+
+          echo "::group::create quantity questionnaire"
+          QSLUG="ghaw-qa-vitals-$(date +%s)"
+          CREATE_BODY=$(jq -n --arg slug "$QSLUG" --arg org "$ORG" '{
+            title:"QA Vitals (temp)", slug:$slug, status:"active", subject_type:"encounter",
+            organizations:[$org],
+            questions:[{ link_id:"1", text:"Body temperature", type:"quantity",
+              answer_option:[{value:"37"}],
+              unit:{system:"http://unitsofmeasure.org", code:"Cel", display:"°C"} }]
+          }')
+          CREATED=$(curl -s -w "\n%{http_code}" "$B/api/v1/questionnaire/" -H "$AUTH" -H "$CT" -X POST -d "$CREATE_BODY")
+          CODE=$(echo "$CREATED" | tail -n1); BODY=$(echo "$CREATED" | sed '$d')
+          echo "create http=$CODE body=$(echo "$BODY" | head -c 500)"
+          QSLUG=$(echo "$BODY" | jq -r '.slug // empty')
+          QID=$(echo "$BODY" | jq -r '.questions[0].id // empty')
+          echo "qslug=$QSLUG qid=$QID"
+          echo "::endgroup::"
+          if [ -z "$QSLUG" ] || [ -z "$QID" ]; then echo "::error::questionnaire create failed"; exit 0; fi
+
+          echo "::group::submit response with unit"
+          SUBMIT_BODY=$(jq -n --arg enc "$ENC" --arg pat "$PAT" --arg qid "$QID" '{
+            resource_id:$enc, encounter:$enc, patient:$pat,
+            results:[{ question_id:$qid, values:[{ value:"37",
+              unit:{system:"http://unitsofmeasure.org", code:"Cel", display:"°C"} }] }]
+          }')
+          SUB=$(curl -s -w "\n%{http_code}" "$B/api/v1/questionnaire/$QSLUG/submit/" -H "$AUTH" -H "$CT" -X POST -d "$SUBMIT_BODY")
+          SCODE=$(echo "$SUB" | tail -n1); SBODY=$(echo "$SUB" | sed '$d')
+          echo "submit http=$SCODE body=$(echo "$SBODY" | head -c 500)"
+          echo "::endgroup::"
+
+          echo "::group::verify via read API"
+          GET=$(curl -s "$B/api/v1/patient/$PAT/questionnaire_response/?encounter=$ENC&subject_type=encounter&limit=10" -H "$AUTH")
+          echo "read: $(echo "$GET" | head -c 800)"
+          DISPLAY=$(echo "$GET" | jq -r '[.results[].responses[]?.values[]?.unit.display // empty] | map(select(. != "")) | .[0] // empty')
+          echo "::endgroup::"
+
+          if [ -n "$DISPLAY" ]; then
+            URL="/facility/$FAC/patient/$PAT/encounter/$ENC/responses"
+            printf 'SEEDED_RESPONSES_URL=%s\nSEEDED_UNIT_DISPLAY=%s\nSEEDED_UNIT_CODE=Cel\n' "$URL" "$DISPLAY" > "$SEED_FILE"
+            echo "SEED_OK display=[$DISPLAY] url=$URL"
+            echo "----- seed.txt -----"; cat "$SEED_FILE"
+          else
+            echo "::error::SEED_FAIL — read API returned no unit.display"
+          fi
