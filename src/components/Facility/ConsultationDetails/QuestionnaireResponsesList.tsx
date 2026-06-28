@@ -1,3 +1,4 @@
+// QA workflow validation: harness re-test of the questionnaire responses surface (no-op).
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
