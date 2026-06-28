@@ -1,5 +1,5 @@
-# gh-aw-metadata: {"schema_version":"v4","frontmatter_hash":"217fb46a3a1cd12e52e71efb8843ef0b13368a11720608b3088ef104914da4dc","body_hash":"4fd127264cd18a4e01003072d753238f4aac80f091b77c4c03de595306684a3e","compiler_version":"v0.80.9","strict":true,"agent_id":"copilot","agent_model":"claude-opus-4.8","engine_versions":{"copilot":"1.0.63"}}
-# gh-aw-manifest: {"version":1,"secrets":["COPILOT_GITHUB_TOKEN","GH_AW_AGENT_TOKEN","GH_AW_GITHUB_MCP_SERVER_TOKEN","GH_AW_GITHUB_TOKEN","GITHUB_TOKEN","JIRA_API_TOKEN","JIRA_BASE_URL","JIRA_EMAIL"],"actions":[{"repo":"actions/cache/restore","sha":"27d5ce7f107fe9357f9df03efb73ab90386fccae","version":"v5.0.5"},{"repo":"actions/cache/save","sha":"27d5ce7f107fe9357f9df03efb73ab90386fccae","version":"v5.0.5"},{"repo":"actions/checkout","sha":"9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0","version":"v7.0.0"},{"repo":"actions/download-artifact","sha":"3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c","version":"v8.0.1"},{"repo":"actions/github-script","sha":"3a2844b7e9c422d3c10d287c895573f7108da1b3","version":"v9.0.0"},{"repo":"actions/github-script","sha":"ed597411d8f924073f98dfc5c65a23a2325f34cd","version":"v8"},{"repo":"actions/setup-node","sha":"48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e","version":"v6.4.0"},{"repo":"actions/upload-artifact","sha":"043fb46d1a93c77aae656e7c1c64a875d1fc6a0a","version":"v7.0.1"},{"repo":"github/gh-aw/actions/setup","sha":"a3624368c4e7d877586ff2784b61de73405e2cdd","version":"v0.80.9"}],"containers":[{"image":"ghcr.io/github/gh-aw-firewall/agent:0.27.7","digest":"sha256:aae231e4635c8999d039c132f1602d3df850fe9b84a00aa2b5ac981179b5661c","pinned_image":"ghcr.io/github/gh-aw-firewall/agent:0.27.7@sha256:aae231e4635c8999d039c132f1602d3df850fe9b84a00aa2b5ac981179b5661c"},{"image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.27.7","digest":"sha256:009caf2e3d88fa77b64e9a03a95a228fc58db0f1701c6d324b29ba5a3c7c79b6","pinned_image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.27.7@sha256:009caf2e3d88fa77b64e9a03a95a228fc58db0f1701c6d324b29ba5a3c7c79b6"},{"image":"ghcr.io/github/gh-aw-firewall/squid:0.27.7","digest":"sha256:deb1d4e19de62d51cee0508057a596a19315c3423ada4d675cad136dc8037c96","pinned_image":"ghcr.io/github/gh-aw-firewall/squid:0.27.7@sha256:deb1d4e19de62d51cee0508057a596a19315c3423ada4d675cad136dc8037c96"},{"image":"ghcr.io/github/gh-aw-mcpg:v0.3.27","digest":"sha256:fe984bddde4ec05d756d9043edb0a32912e6b7b72f6a121b1082f29221421cc7","pinned_image":"ghcr.io/github/gh-aw-mcpg:v0.3.27@sha256:fe984bddde4ec05d756d9043edb0a32912e6b7b72f6a121b1082f29221421cc7"},{"image":"ghcr.io/github/gh-aw-node","digest":"sha256:529d02eb970b1161aa25c593a9c3df57fdfad5a8add328cb3b6eccef66f3183b","pinned_image":"ghcr.io/github/gh-aw-node@sha256:529d02eb970b1161aa25c593a9c3df57fdfad5a8add328cb3b6eccef66f3183b"},{"image":"ghcr.io/github/github-mcp-server:v1.4.0","digest":"sha256:2afb26356481d1a350e14544a6e160f7f7ec1561a1ea309b823665abf0309036","pinned_image":"ghcr.io/github/github-mcp-server:v1.4.0@sha256:2afb26356481d1a350e14544a6e160f7f7ec1561a1ea309b823665abf0309036"}]}
+# gh-aw-metadata: {"schema_version":"v4","frontmatter_hash":"e4fdaa3939842dabaf77d79a7f4d877489d884d251366c4c2c7edfb9ee0f9015","body_hash":"5d5fcbdb46c1cbfe91318d632e4832e5107ae81c0d2c75251d4188f871b4e346","compiler_version":"v0.80.9","strict":true,"agent_id":"copilot","agent_model":"claude-opus-4.8","engine_versions":{"copilot":"1.0.63"}}
+# gh-aw-manifest: {"version":1,"secrets":["COPILOT_GITHUB_TOKEN","GH_AW_AGENT_TOKEN","GH_AW_GITHUB_MCP_SERVER_TOKEN","GH_AW_GITHUB_TOKEN","GITHUB_TOKEN","JIRA_API_TOKEN","JIRA_BASE_URL","JIRA_EMAIL"],"actions":[{"repo":"actions/cache","sha":"0057852bfaa89a56745cba8c7296529d2fc39830","version":"v4"},{"repo":"actions/cache/restore","sha":"27d5ce7f107fe9357f9df03efb73ab90386fccae","version":"v5.0.5"},{"repo":"actions/cache/save","sha":"27d5ce7f107fe9357f9df03efb73ab90386fccae","version":"v5.0.5"},{"repo":"actions/checkout","sha":"34e114876b0b11c390a56381ad16ebd13914f8d5","version":"v4"},{"repo":"actions/checkout","sha":"9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0","version":"v7.0.0"},{"repo":"actions/download-artifact","sha":"3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c","version":"v8.0.1"},{"repo":"actions/github-script","sha":"3a2844b7e9c422d3c10d287c895573f7108da1b3","version":"v9.0.0"},{"repo":"actions/github-script","sha":"ed597411d8f924073f98dfc5c65a23a2325f34cd","version":"v8"},{"repo":"actions/setup-node","sha":"48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e","version":"v6.4.0"},{"repo":"actions/upload-artifact","sha":"043fb46d1a93c77aae656e7c1c64a875d1fc6a0a","version":"v7.0.1"},{"repo":"github/gh-aw/actions/setup","sha":"a3624368c4e7d877586ff2784b61de73405e2cdd","version":"v0.80.9"}],"containers":[{"image":"ghcr.io/github/gh-aw-firewall/agent:0.27.7","digest":"sha256:aae231e4635c8999d039c132f1602d3df850fe9b84a00aa2b5ac981179b5661c","pinned_image":"ghcr.io/github/gh-aw-firewall/agent:0.27.7@sha256:aae231e4635c8999d039c132f1602d3df850fe9b84a00aa2b5ac981179b5661c"},{"image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.27.7","digest":"sha256:009caf2e3d88fa77b64e9a03a95a228fc58db0f1701c6d324b29ba5a3c7c79b6","pinned_image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.27.7@sha256:009caf2e3d88fa77b64e9a03a95a228fc58db0f1701c6d324b29ba5a3c7c79b6"},{"image":"ghcr.io/github/gh-aw-firewall/squid:0.27.7","digest":"sha256:deb1d4e19de62d51cee0508057a596a19315c3423ada4d675cad136dc8037c96","pinned_image":"ghcr.io/github/gh-aw-firewall/squid:0.27.7@sha256:deb1d4e19de62d51cee0508057a596a19315c3423ada4d675cad136dc8037c96"},{"image":"ghcr.io/github/gh-aw-mcpg:v0.3.27","digest":"sha256:fe984bddde4ec05d756d9043edb0a32912e6b7b72f6a121b1082f29221421cc7","pinned_image":"ghcr.io/github/gh-aw-mcpg:v0.3.27@sha256:fe984bddde4ec05d756d9043edb0a32912e6b7b72f6a121b1082f29221421cc7"},{"image":"ghcr.io/github/gh-aw-node","digest":"sha256:529d02eb970b1161aa25c593a9c3df57fdfad5a8add328cb3b6eccef66f3183b","pinned_image":"ghcr.io/github/gh-aw-node@sha256:529d02eb970b1161aa25c593a9c3df57fdfad5a8add328cb3b6eccef66f3183b"},{"image":"ghcr.io/github/github-mcp-server:v1.4.0","digest":"sha256:2afb26356481d1a350e14544a6e160f7f7ec1561a1ea309b823665abf0309036","pinned_image":"ghcr.io/github/github-mcp-server:v1.4.0@sha256:2afb26356481d1a350e14544a6e160f7f7ec1561a1ea309b823665abf0309036"}]}
 # This file was automatically generated by gh-aw (v0.80.9). DO NOT EDIT. To debug this workflow, load the skill at https://github.com/github/gh-aw/blob/main/debug.md
 #
 #    ___                   _   _      
@@ -23,7 +23,7 @@
 #
 # For more information: https://github.github.com/gh-aw/introduction/overview/
 #
-# Build & visual-smoke workflow for care_fe pull requests that touch the frontend. A pre-agent runner step builds the PR head and serves it on a preview server; the agent then verifies the app builds and boots and screenshots the affected flows across a few viewports using the repository's existing Playwright setup (CLI mode), publishes them as run assets, and posts a single PR comment with a severity-ranked, honestly-scoped summary. Without a backend in CI it is a build + boot + public- surface smoke test (auth-gated feature UIs are covered by the backend Playwright suite), not a feature-level UI check. Reports the outcome to the linked JIRA issue.
+# Backend-backed Visual QA for care_fe pull requests that touch the frontend. Pre-agent runner steps boot the care backend (Docker + fixtures), build the PR head pointed at a same-origin API proxy, and serve both on one port; the agent then authenticates with a fixture account and screenshots the actual affected feature flows across a few viewports using the repository's existing Playwright setup (CLI mode), publishes them as run assets, and posts a single PR comment with a severity-ranked summary. If the backend cannot be brought up it degrades gracefully to an honestly-scoped build + boot smoke test. Reports the QA outcome back to the linked JIRA issue.
 #
 # Resolved workflow manifest:
 #   Imports:
@@ -43,6 +43,8 @@
 # Custom actions used:
 #   - actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
 #   - actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+#   - actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+#   - actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 #   - actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 #   - actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
 #   - actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -205,7 +207,7 @@ jobs:
         env:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
       - name: Checkout .github and .agents folders
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
           sparse-checkout: |
@@ -280,24 +282,24 @@ jobs:
         run: |
           bash "${RUNNER_TEMP}/gh-aw/actions/create_prompt_first.sh"
           {
-          cat << 'GH_AW_PROMPT_38434555aaa50954_EOF'
+          cat << 'GH_AW_PROMPT_3fa4b6579185f9db_EOF'
           <system>
-          GH_AW_PROMPT_38434555aaa50954_EOF
+          GH_AW_PROMPT_3fa4b6579185f9db_EOF
           cat "${RUNNER_TEMP}/gh-aw/prompts/xpia.md"
           cat "${RUNNER_TEMP}/gh-aw/prompts/temp_folder_prompt.md"
           cat "${RUNNER_TEMP}/gh-aw/prompts/markdown.md"
           cat "${RUNNER_TEMP}/gh-aw/prompts/playwright_prompt.md"
           cat "${RUNNER_TEMP}/gh-aw/prompts/cache_memory_prompt.md"
           cat "${RUNNER_TEMP}/gh-aw/prompts/safe_outputs_prompt.md"
-          cat << 'GH_AW_PROMPT_38434555aaa50954_EOF'
+          cat << 'GH_AW_PROMPT_3fa4b6579185f9db_EOF'
           <safe-output-tools>
           Tools: add_comment, add_labels, remove_labels, upload_asset, missing_tool, missing_data, noop, jira_report, request_rework
           
           upload_asset: provide a file path; returns a URL; assets are published after the workflow completes (safeoutputs).
           </safe-output-tools>
-          GH_AW_PROMPT_38434555aaa50954_EOF
+          GH_AW_PROMPT_3fa4b6579185f9db_EOF
           cat "${RUNNER_TEMP}/gh-aw/prompts/mcp_cli_tools_prompt.md"
-          cat << 'GH_AW_PROMPT_38434555aaa50954_EOF'
+          cat << 'GH_AW_PROMPT_3fa4b6579185f9db_EOF'
           <github-context>
           The following GitHub context information is available for this workflow:
           {{#if github.actor}}
@@ -324,17 +326,30 @@ jobs:
           {{#if github.run_id}}
           - **workflow-run-id**: __GH_AW_GITHUB_RUN_ID__
           {{/if}}
+          - **checkouts**: The following repositories have been checked out and are available in the workspace:
+            - repo `ohcnetwork/care` → `$GITHUB_WORKSPACE/care` [shallow clone, fetch-depth=1 (default)]
+            - **Note**: If a branch you need is not in the list above and is not listed as an additional fetched ref, it has NOT been checked out. For private repositories you cannot fetch it. If the branch is required and not available, exit with an error and ask the user to add it to the `fetch:` option of the `checkout:` configuration (e.g., `fetch: ["refs/pulls/open/*"]` for all open PR refs, or `fetch: ["main", "feature/my-branch"]` for specific branches).
+            - **Warning: No git credentials are available to the agent.** Credentials are
+              intentionally removed after the checkout step for security. This means any git
+              operation that needs to authenticate to the remote will fail. In private repositories, that includes:
+              - `git fetch`, `git pull`, `git clone`, and `git push` (direct push, not via safe-output tools)
+              - Checking out or switching to a remote branch that is not already fetched
+              - Deepening a shallow clone (`git fetch --unshallow`)
+              - On-demand blob fetches in partial/blobless clones (operations on files not in the initial checkout)
+              Do NOT attempt to configure credentials, run `git credential fill`, or modify `.gitconfig` —
+              authentication will not succeed. If you encounter credential prompts or authentication errors,
+              stop immediately and report the limitation rather than spending turns trying to work around it.
           </github-context>
           
-          GH_AW_PROMPT_38434555aaa50954_EOF
+          GH_AW_PROMPT_3fa4b6579185f9db_EOF
           cat "${RUNNER_TEMP}/gh-aw/prompts/github_mcp_tools_with_safeoutputs_prompt.md"
-          cat << 'GH_AW_PROMPT_38434555aaa50954_EOF'
+          cat << 'GH_AW_PROMPT_3fa4b6579185f9db_EOF'
           </system>
           {{#runtime-import .github/workflows/shared/jira-report.md}}
           {{#runtime-import .github/workflows/shared/request-rework.md}}
           {{#runtime-import .github/workflows/shared/rework-cap.md}}
           {{#runtime-import .github/workflows/pr-qa-playwright.md}}
-          GH_AW_PROMPT_38434555aaa50954_EOF
+          GH_AW_PROMPT_3fa4b6579185f9db_EOF
           } > "$GH_AW_PROMPT"
       - name: Interpolate variables and render templates
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -489,9 +504,27 @@ jobs:
             echo "GH_AW_SAFE_OUTPUTS_TOOLS_PATH=${RUNNER_TEMP}/gh-aw/safeoutputs/tools.json"
           } >> "$GITHUB_OUTPUT"
       - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
+      - name: Checkout ohcnetwork/care into care
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+          repository: ohcnetwork/care
+          ref: develop
+          path: care
+      - name: Build checkout manifest for safe-outputs handlers
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_AW_CHECKOUT_MANIFEST_COUNT: "1"
+          GH_AW_CHECKOUT_REPO_0: "ohcnetwork/care"
+          GH_AW_CHECKOUT_PATH_0: "care"
+        with:
+          script: |
+            const { main } = require('${{ runner.temp }}/gh-aw/actions/build_checkout_manifest.cjs');
+            await main();
       - name: Create gh-aw temp directory
         run: bash "${RUNNER_TEMP}/gh-aw/actions/create_gh_aw_tmp_dir.sh"
       - name: Configure gh CLI for GitHub Enterprise
@@ -503,10 +536,36 @@ jobs:
         with:
           cache: npm
           node-version-file: .node-version
+      - id: docker-cache
+        name: Cache backend Docker images
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          key: ${{ runner.os }}-ghaw-qa-docker-${{ hashFiles('care/docker/dev.Dockerfile', 'care/Pipfile.lock') }}
+          path: /tmp/docker-cache
+          restore-keys: |
+            ${{ runner.os }}-ghaw-qa-docker-
+      - continue-on-error: true
+        name: Load cached Docker images
+        run: |
+          if [ -d /tmp/docker-cache ]; then
+            for f in /tmp/docker-cache/*.tar; do docker load -i "$f" 2>/dev/null || true; done
+          fi
+      - continue-on-error: true
+        name: Boot the care backend with fixtures and mint a fixture token
+        run: "set -uo pipefail\nmkdir -p /tmp/gh-aw/agent\necho \"down\" > /tmp/gh-aw/agent/backend-status.txt\nif [ ! -f care/Makefile ]; then\n  echo \"::warning::care backend checkout missing; QA will run as build+boot smoke\"\n  exit 0\nfi\ncd care\necho DISABLE_RATELIMIT=True >> docker/.local.env\necho JWKS_BASE64=\\\"$(cat ../.github/runner-files/jwks.b64.txt)\\\" >> docker/.local.env\necho MAX_QUESTIONNAIRE_TEXT_RESPONSE_SIZE=500 >> docker/.local.env\nif ! make docker_config_file=docker-compose.local.yaml up load-fixtures; then\n  echo \"::warning::backend failed to start; QA will run as build+boot smoke\"\n  exit 0\nfi\ncd ..\n# Wait for the API to answer a real login, then persist the fixture JWT.\nfor i in $(seq 1 60); do\n  code=$(curl -s -o /tmp/gh-aw/agent/auth.json -w '%{http_code}' \\\n    http://localhost:9000/api/v1/auth/login/ \\\n    -X POST -H 'Content-Type: application/json' \\\n    -d '{\"username\":\"admin\",\"password\":\"admin\"}' || true)\n  if [ \"$code\" = \"200\" ] && grep -q '\"access\"' /tmp/gh-aw/agent/auth.json 2>/dev/null; then\n    echo \"up\" > /tmp/gh-aw/agent/backend-status.txt\n    echo \"backend up; fixture token minted\"\n    break\n  fi\n  sleep 3\ndone\nif ! grep -q '^up$' /tmp/gh-aw/agent/backend-status.txt; then\n  echo \"::warning::backend did not become ready; QA will run as build+boot smoke\"\n  rm -f /tmp/gh-aw/agent/auth.json\nfi\n"
+      - continue-on-error: true
+        if: steps.docker-cache.outputs.cache-hit != 'true'
+        name: Save Docker images to cache
+        run: |
+          mkdir -p /tmp/docker-cache
+          docker compose -f care/docker-compose.local.yaml config --images 2>/dev/null | while read -r img; do
+            filename=$(echo "$img" | tr '/:' '_')
+            [ -f "/tmp/docker-cache/${filename}.tar" ] || docker save -o "/tmp/docker-cache/${filename}.tar" "$img" 2>/dev/null || true
+          done
       - env:
           NODE_OPTIONS: --max-old-space-size=4096
-        name: Build PR head and start preview server on :80
-        run: "set -uo pipefail\nmkdir -p /tmp/gh-aw/agent\necho \"Building commit $(git rev-parse HEAD)\"\ngit log --oneline -2 || true\nnpm ci --prefer-offline --no-audit --no-fund\nnpm run build\n# Serve the built SPA on host port 80 (privileged → sudo). The vite build\n# output dir is `build/` (vite.config.mts outDir), not `dist/`. serve does not\n# enforce a Host-header allowlist, so host.docker.internal requests are accepted.\nnpm i -g serve@14 || true\nSERVE_BIN=\"$(command -v serve || true)\"\nif [ -n \"$SERVE_BIN\" ]; then\n  sudo -E env \"PATH=$PATH\" nohup \"$SERVE_BIN\" -s build -l 80 \\\n    > /tmp/gh-aw/agent/preview.log 2>&1 &\nfi\necho \"Waiting for the preview server on http://localhost:80 ...\"\nfor i in $(seq 1 60); do\n  curl -sf http://localhost:80/ >/dev/null 2>&1 && break\n  sleep 2\ndone\nif curl -sf http://localhost:80/ >/dev/null 2>&1; then\n  echo \"up\" > /tmp/gh-aw/agent/preview-status.txt\n  echo \"preview server is up on :80\"\nelse\n  # Do not fail the job: let the agent report the build failure gracefully.\n  echo \"down\" > /tmp/gh-aw/agent/preview-status.txt\n  echo \"::warning::preview server did not start; the agent will report the build failure\"\n  tail -c 4000 /tmp/gh-aw/agent/preview.log > /tmp/gh-aw/agent/preview-error.txt 2>/dev/null || true\nfi\n"
+        name: Build PR head and start preview + API proxy on :80
+        run: "set -uo pipefail\nmkdir -p /tmp/gh-aw/agent\nBACKEND_STATUS=\"$(cat /tmp/gh-aw/agent/backend-status.txt 2>/dev/null || echo down)\"\necho \"Building commit $(git rev-parse HEAD) (backend: $BACKEND_STATUS)\"\ngit log --oneline -2 || true\nnpm ci --prefer-offline --no-audit --no-fund\n# Point the SPA at the same-origin proxy so the sandboxed browser reaches the API\n# over the single open port (80). When the backend is down, /api returns 502 and\n# routes fall back to the login screen (the honest smoke behaviour).\nexport REACT_CARE_API_URL=\"http://host.docker.internal\"\nnpm run build\n# Publish the fixture token into the served dir so the agent can load it into\n# localStorage from the page origin. These are ephemeral fixture creds on a\n# throwaway runner — not secrets — and the runner is torn down after the job.\nif [ \"$BACKEND_STATUS\" = \"up\" ] && [ -f /tmp/gh-aw/agent/auth.json ]; then\n  cp /tmp/gh-aw/agent/auth.json build/__qa_auth.json\nfi\n# Serve the SPA + reverse-proxy /api to the backend on :9000 (privileged port → sudo).\nSERVER_JS=\"$GITHUB_WORKSPACE/.github/runner-files/qa-preview-server.js\"\nsudo -E env \"PATH=$PATH\" QA_BUILD_DIR=\"$GITHUB_WORKSPACE/build\" QA_PORT=80 QA_BACKEND_PORT=9000 \\\n  nohup node \"$SERVER_JS\" > /tmp/gh-aw/agent/preview.log 2>&1 &\necho \"Waiting for the preview server on http://localhost:80 ...\"\nfor i in $(seq 1 60); do\n  curl -sf http://localhost:80/ >/dev/null 2>&1 && break\n  sleep 2\ndone\nif curl -sf http://localhost:80/ >/dev/null 2>&1; then\n  echo \"up\" > /tmp/gh-aw/agent/preview-status.txt\n  echo \"preview server is up on :80\"\nelse\n  echo \"down\" > /tmp/gh-aw/agent/preview-status.txt\n  echo \"::warning::preview server did not start; the agent will report the build failure\"\n  tail -c 4000 /tmp/gh-aw/agent/preview.log > /tmp/gh-aw/agent/preview-error.txt 2>/dev/null || true\nfi\n# Confirm the API proxy works end-to-end; downgrade to smoke if it doesn't.\nif [ \"$BACKEND_STATUS\" = \"up\" ]; then\n  pcode=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:80/api/v1/auth/login/ \\\n    -X POST -H 'Content-Type: application/json' \\\n    -d '{\"username\":\"admin\",\"password\":\"admin\"}' || true)\n  echo \"api proxy check via :80 -> $pcode\"\n  if [ \"$pcode\" != \"200\" ]; then\n    echo \"::warning::API proxy not reachable through :80; degrading to smoke\"\n    echo \"down\" > /tmp/gh-aw/agent/backend-status.txt\n    rm -f build/__qa_auth.json\n  fi\nfi\n"
 
       # Cache memory file share configuration from frontmatter processed below
       - name: Create cache-memory directory
@@ -978,7 +1037,7 @@ jobs:
         # --allow-tool shell(wc)
         # --allow-tool shell(yq)
         # --allow-tool write
-        timeout-minutes: 45
+        timeout-minutes: 55
         run: |
           set -o pipefail
           printf '%s' "$(date +%s%3N)" > /tmp/gh-aw/agent_cli_start_ms.txt
@@ -1041,7 +1100,7 @@ jobs:
           GH_AW_PHASE: agent
           GH_AW_PROMPT: /tmp/gh-aw/aw-prompts/prompt.txt
           GH_AW_SAFE_OUTPUTS: ${{ steps.set-runtime-paths.outputs.GH_AW_SAFE_OUTPUTS }}
-          GH_AW_TIMEOUT_MINUTES: 45
+          GH_AW_TIMEOUT_MINUTES: 55
           GH_AW_VERSION: v0.80.9
           GITHUB_API_URL: ${{ github.api_url }}
           GITHUB_AW: true
@@ -1479,7 +1538,7 @@ jobs:
           GH_AW_FAILURE_REPORT_AS_ISSUE: "true"
           GH_AW_MISSING_TOOL_REPORT_AS_FAILURE: "true"
           GH_AW_MISSING_DATA_REPORT_AS_FAILURE: "true"
-          GH_AW_TIMEOUT_MINUTES: "45"
+          GH_AW_TIMEOUT_MINUTES: "55"
           GH_AW_CACHE_MEMORY_ENABLED: "true"
           GH_AW_CACHE_MEMORY_RESTORE_0_MATCHED_KEY: ${{ needs.agent.outputs.cache_memory_restore_0_matched_key || '' }}
           GH_AW_CACHE_MEMORY_RESTORE_0_CACHE_HIT: ${{ needs.agent.outputs.cache_memory_restore_0_cache_hit || 'false' }}
@@ -1589,7 +1648,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           WORKFLOW_NAME: "care_fe Visual QA (Playwright)"
-          WORKFLOW_DESCRIPTION: "Build & visual-smoke workflow for care_fe pull requests that touch the frontend. A pre-agent runner step builds the PR head and serves it on a preview server; the agent then verifies the app builds and boots and screenshots the affected flows across a few viewports using the repository's existing Playwright setup (CLI mode), publishes them as run assets, and posts a single PR comment with a severity-ranked, honestly-scoped summary. Without a backend in CI it is a build + boot + public- surface smoke test (auth-gated feature UIs are covered by the backend Playwright suite), not a feature-level UI check. Reports the outcome to the linked JIRA issue."
+          WORKFLOW_DESCRIPTION: "Backend-backed Visual QA for care_fe pull requests that touch the frontend. Pre-agent runner steps boot the care backend (Docker + fixtures), build the PR head pointed at a same-origin API proxy, and serve both on one port; the agent then authenticates with a fixture account and screenshots the actual affected feature flows across a few viewports using the repository's existing Playwright setup (CLI mode), publishes them as run assets, and posts a single PR comment with a severity-ranked summary. If the backend cannot be brought up it degrades gracefully to an honestly-scoped build + boot smoke test. Reports the QA outcome back to the linked JIRA issue."
           HAS_PATCH: ${{ needs.agent.outputs.has_patch }}
         with:
           script: |
