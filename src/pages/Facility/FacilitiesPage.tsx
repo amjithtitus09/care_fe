@@ -1,5 +1,5 @@
 import careConfig from "@careConfig";
-// qa-backend-test: trigger backend-backed Visual QA (v1)
+// qa-backend-test: trigger backend-backed Visual QA (v2)
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "raviger";
 import { useTranslation } from "react-i18next";
