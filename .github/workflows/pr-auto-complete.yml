@@ -11,19 +11,36 @@ name: PR Auto-Complete
 #
 # Why a plain workflow (not gh-aw): the terminal merge must be deterministic and
 # is not subject to the Copilot "Require approval for workflow runs" gate, the
-# gh-aw activation/confused-deputy guard, or agent nondeterminism. `schedule` and
-# `workflow_dispatch` are never gated, so this runs unimpeded.
+# gh-aw activation/confused-deputy guard, or agent nondeterminism. `schedule`,
+# `workflow_dispatch` and `workflow_run` are never gated, so this runs unimpeded —
+# the workflow_run triggers make it react within seconds of a PR becoming eligible,
+# with the cron as a backstop.
 
 on:
   schedule:
     # Every 5 minutes. Scheduled workflows only run from the default branch, and
-    # are never subject to the fork-PR or Copilot approval gates.
+    # are never subject to the fork-PR or Copilot approval gates. This is now only
+    # a BACKSTOP — the workflow_run triggers below make completion near-instant.
     - cron: "*/5 * * * *"
   workflow_dispatch:
     inputs:
       pr_number:
         description: "Optional: only evaluate this single PR number"
         required: false
+  # Event-driven: fire the moment a terminal signal could make a PR eligible — the
+  # reviewer finishing (sets `reviewed` on APPROVE), QA finishing (sets `Tested`),
+  # or a required check going green after a rework push. Each run does the same
+  # idempotent scan of open agent PRs, so we don't need the triggering PR's context.
+  # workflow_run always runs THIS file from the default branch and is never subject
+  # to the Copilot "Require approval for workflow runs" gate. The global serial
+  # concurrency group below guarantees no two scans merge at once.
+  workflow_run:
+    workflows:
+      - "care_fe Pull Request Reviewer"
+      - "care_fe Visual QA (Playwright)"
+      - "Lint Code Base"
+      - "Playwright Tests"
+    types: [completed]
 
 permissions:
   contents: write
