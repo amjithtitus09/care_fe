@@ -91,11 +91,19 @@ jobs:
           if [ -z "$ORG" ]; then echo "::error::no organization found"; exit 0; fi
 
           echo "::group::discover encounter/patient/facility"
-          ENCJSON=$(curl -s "$B/api/v1/encounter/?limit=1" -H "$AUTH")
-          echo "encounter list: $(echo "$ENCJSON" | head -c 400)"
-          ENC=$(echo "$ENCJSON" | jq -r '.results[0].id // empty')
-          PAT=$(echo "$ENCJSON" | jq -r '.results[0].patient.id // empty')
-          FAC=$(echo "$ENCJSON" | jq -r '(.results[0].facility.id // .results[0].facility) // empty')
+          PAT=""; ENC=""; FAC=""
+          PATIENTS=$(curl -s "$B/api/v1/patient/?limit=10" -H "$AUTH" | jq -r '.results[]?.id // empty')
+          echo "patients: $(echo "$PATIENTS" | tr '\n' ' ')"
+          for p in $PATIENTS; do
+            EJ=$(curl -s "$B/api/v1/encounter/?patient=$p&limit=1" -H "$AUTH")
+            e=$(echo "$EJ" | jq -r '.results[0].id // empty')
+            if [ -n "$e" ]; then
+              PAT="$p"; ENC="$e"
+              FAC=$(echo "$EJ" | jq -r '(.results[0].facility.id // .results[0].facility) // empty')
+              echo "picked patient=$p encounter=$e facility=$(echo "$EJ" | jq -c '.results[0].facility')"
+              break
+            fi
+          done
           echo "enc=$ENC pat=$PAT fac=$FAC"
           echo "::endgroup::"
           if [ -z "$ENC" ] || [ -z "$PAT" ] || [ -z "$FAC" ]; then echo "::error::no encounter/patient/facility"; exit 0; fi
