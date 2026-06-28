@@ -21,6 +21,7 @@ export function QuestionLabel({
   isSubQuestion = false,
 }: QuestionLabelProps) {
   const defaultClass = groupLabel ? defaultGroupClass : defaultInputClass;
+  const unitText = question.unit?.display || question.unit?.code;
 
   return (
     <Label className={className ?? defaultClass}>
@@ -45,10 +46,8 @@ export function QuestionLabel({
             </span>
             {question.required && <span className="ml-1 text-red-500">*</span>}
           </span>
-          {question.unit?.code && (
-            <span className="text-sm text-gray-500">
-              ({question.unit.code})
-            </span>
+          {unitText && (
+            <span className="text-sm text-gray-500">({unitText})</span>
           )}
         </div>
       </div>
