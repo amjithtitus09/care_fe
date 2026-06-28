@@ -472,7 +472,9 @@ than diffing pixel-for-pixel.
 
 Use the `upload-asset` safe output to publish each representative screenshot (every
 Critical/Warning, plus at least one Pass — prefer the primary feature screenshot when
-authenticated, otherwise the login page). Keep the returned URLs for the comment.
+authenticated, otherwise the login page). Keep each returned URL — you will **embed it
+inline** in the comment (Step 7). Append `?raw=true` to every asset URL when embedding so
+GitHub renders the actual image rather than linking to a blob page.
 
 ## Step 7 — Post the PR comment
 
@@ -495,9 +497,19 @@ deep feature E2E is owned by the backend Playwright suite `playwright.yaml`>.
 **This PR's changed area:** <name the feature and whether its real UI was verified, or
 state plainly that it could not be verified this run and why>
 
-| Route | Type | Verified | Viewport | Severity | Screenshot |
-|-------|------|----------|----------|----------|------------|
-| /<route> | public / auth-gated | feature UI / boot-smoke | desktop | 🟢 | [view](URL) |
+| Route | Type | Verified | Viewport | Severity |
+|-------|------|----------|----------|----------|
+| `/<route>` | public / auth-gated | feature UI / boot-smoke | desktop | 🟢 |
+
+### Screenshots
+
+Embed **every** representative screenshot inline as a rendered image so reviewers see it
+without clicking — never a bare `[view](URL)` link. Caption each with its route + viewport,
+and use the asset URL with `?raw=true`. Cap the width so the comment stays readable
+(`width="420"` for desktop, `width="240"` for mobile):
+
+**`/<route>` — desktop**
+<img src="URL?raw=true" width="420" alt="/<route> — desktop">
 
 ### What this run verified
 - ✅ <e.g. logged in · patient list renders · feature column shows unit text · console clean>
