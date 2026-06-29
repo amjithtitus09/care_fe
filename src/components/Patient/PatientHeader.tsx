@@ -7,6 +7,12 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { PatientHoverCard } from "@/pages/Facility/services/serviceRequests/PatientHoverCard";
 import {
+  ENCOUNTER_STATUS_COLORS,
+  EncounterListRead,
+  EncounterRead,
+  EncounterStatus,
+} from "@/types/emr/encounter/encounter";
+import {
   PatientListRead,
   PatientRead,
   PublicPatientRead,
@@ -18,12 +24,18 @@ export function PatientHeader({
   facilityId,
   className,
   isPatientPage = false,
+  encounter,
 }: {
   patient: PatientRead | PublicPatientRead | PatientListRead;
   facilityId?: string;
   className?: string;
   isPatientPage?: boolean;
+  encounter?: EncounterRead | EncounterListRead | null;
 }) {
+  const { t } = useTranslation();
+
+  const isDischarged = encounter?.status === EncounterStatus.DISCHARGED;
+
   return (
     <div
       className={cn(
@@ -32,11 +44,21 @@ export function PatientHeader({
       )}
     >
       <div className="flex flex-col md:flex-row gap-4 xl:gap-8 xl:items-center">
-        <PatientHoverCard
-          patient={patient}
-          facilityId={facilityId}
-          disabled={isPatientPage}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <PatientHoverCard
+            patient={patient}
+            facilityId={facilityId}
+            disabled={isPatientPage}
+          />
+          {isDischarged && (
+            <Badge
+              variant={ENCOUNTER_STATUS_COLORS.discharged}
+              className="whitespace-nowrap"
+            >
+              {t("encounter_status__discharged")}
+            </Badge>
+          )}
+        </div>
         <div className="flex flex-wrap xl:gap-5 gap-2">
           {"instance_identifiers" in patient &&
             patient.instance_identifiers

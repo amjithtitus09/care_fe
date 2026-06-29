@@ -233,6 +233,7 @@ export const EncounterShow = (props: Props) => {
           <PatientHeader
             patient={patient}
             facilityId={facilityId}
+            encounter={selectedEncounter}
             className="flex-1 p-0 bg-transparent shadow-none"
           />
           {selectedEncounter && (
