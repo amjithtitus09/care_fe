@@ -113,6 +113,15 @@ const AuthHeroBase = () => {
             >
               {t("third_party_software_licenses")}
             </Link>
+            <span className="mx-2 text-primary-400">|</span>
+            <a
+              href="https://github.com/ohcnetwork/care_fe/issues"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary-400 hover:text-primary-500"
+            >
+              {t("report_an_issue")}
+            </a>
           </div>
         </div>
       </div>
