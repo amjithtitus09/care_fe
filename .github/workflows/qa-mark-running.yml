@@ -1,0 +1,62 @@
+name: QA State Machine — Mark Running
+
+# Deterministic companion of the `state:*` QA label state machine (see
+# .github/QA_STATE_MACHINE.md). When `state:needs-qa` is applied to a PR, the agentic QA
+# workflow (pr-qa-playwright.md) starts and gh-aw consumes the trigger label — leaving the
+# PR briefly with no state label while QA runs (up to ~55 min). This tiny workflow stamps
+# the visible, authoritative `state:qa-running` marker in that window so:
+#   * humans can see QA is in progress, and
+#   * the watchdog (qa-watchdog.md) can detect a QA run that crashed between start and
+#     verdict (a PR stuck in `state:qa-running` past a threshold) and reset it.
+#
+# It is plain, deterministic GitHub Actions (no agent) because flipping one label needs no
+# reasoning. It runs in parallel with the QA workflow on the same `state:needs-qa` labelling
+# event; gh-aw's QA activation depends only on the immutable event payload (the label name)
+# and the actor's membership, never on the label still being present, so removing
+# `state:needs-qa` here cannot prevent QA from starting.
+
+on:
+  pull_request_target:
+    types: [labeled]
+
+permissions:
+  pull-requests: write
+  issues: write
+
+concurrency:
+  # Serialize per-PR with the other deterministic state writes for this PR.
+  group: qa-mark-running-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  mark-running:
+    runs-on: ubuntu-latest
+    # Only when the label just added is the QA entry label.
+    if: github.event.label.name == 'state:needs-qa'
+    steps:
+      - name: Transition state:needs-qa -> state:qa-running
+        env:
+          # Agent PAT so the write is attributed to a write+ member and does not run into
+          # the recursion guard. `state:qa-running` triggers no downstream workflow, so this
+          # never cascades further. Falls back to GITHUB_TOKEN.
+          GH_TOKEN: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # The QA workflow consumes (removes) `state:needs-qa` at activation, so by the time
+          # this runs the PR is usually bare — and stamping `state:qa-running` over that bare
+          # window is exactly this workflow's job. Only skip if a *later* state is already set
+          # (QA reached a verdict, the watchdog acted, or qa-running is already stamped),
+          # so we never clobber a verdict/terminal label nor double-stamp.
+          labels="$(gh pr view "$PR_NUMBER" --repo "$REPO" --json labels --jq '.labels[].name')"
+          if printf '%s\n' "$labels" | grep -qxE 'state:(qa-running|qa-passed|needs-rework|needs-human)'; then
+            echo "PR #$PR_NUMBER already past the needs-qa window — leaving its state untouched."
+            exit 0
+          fi
+          echo "Marking PR #$PR_NUMBER as state:qa-running."
+          # Single edit: drop the entry label (if still present) and add the running marker.
+          # gh ignores a remove of a label that the QA activation may have already consumed.
+          gh pr edit "$PR_NUMBER" --repo "$REPO" \
+            --remove-label 'state:needs-qa' \
+            --add-label 'state:qa-running' || true

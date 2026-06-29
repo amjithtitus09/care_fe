@@ -1,0 +1,60 @@
+name: QA State Machine — Enroll
+
+# Entry point of the `state:*` QA label state machine (see .github/QA_STATE_MACHINE.md).
+#
+# This is intentionally a plain, deterministic GitHub Actions workflow rather than an
+# agentic gh-aw workflow: enrolling a PR is a single conditional label write, so spinning
+# up the gh-aw firewall/agent for it would be wasteful and slow. It mirrors the repo's
+# existing deterministic label automation (pr-automation.yml).
+#
+# When a PR carries the `jira-agent` opt-in label (applied by a maintainer or the managed
+# Copilot-for-Jira agent) and is not already in a `state:*` stage, it adds the first
+# `state:needs-qa` label, which the QA workflow (pr-qa-playwright.md) reacts to.
+
+on:
+  pull_request_target:
+    types: [opened, reopened, ready_for_review, labeled]
+
+# `pull_request_target` runs in the base-repo context. The label write itself is done with
+# the agent PAT (see GH_TOKEN below), not GITHUB_TOKEN; permissions here only cover the
+# fallback path. The job never checks out or runs PR code and is gated on the trusted
+# `jira-agent` opt-in, so it is low-risk.
+permissions:
+  pull-requests: write
+  issues: write
+
+concurrency:
+  # Serialize per-PR so two near-simultaneous events can't both add the entry label.
+  group: qa-enroll-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  enroll:
+    runs-on: ubuntu-latest
+    # Only act on enrolled PRs. On a `labeled` event, also require that the label just
+    # added was `jira-agent`, so we don't re-evaluate on unrelated labelling churn.
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'jira-agent') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'jira-agent')
+    steps:
+      - name: Add state:needs-qa when the PR is not already in a state
+        env:
+          # Use the agent PAT so the `state:needs-qa` label this adds will (a) actually fire
+          # the QA workflow — a label written with the default GITHUB_TOKEN is suppressed by
+          # GitHub's recursion guard and never triggers another workflow — and (b) be
+          # attributed to a write+ member so the QA workflow's activation membership gate
+          # (admin/maintainer/write) passes. Falls back to GITHUB_TOKEN, under which the
+          # cascade simply won't fire until the PAT is configured.
+          GH_TOKEN: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # Mutual exclusivity: only enrol if the PR carries no state:* label yet.
+          labels="$(gh pr view "$PR_NUMBER" --repo "$REPO" --json labels --jq '.labels[].name')"
+          if printf '%s\n' "$labels" | grep -q '^state:'; then
+            echo "PR #$PR_NUMBER already in a state:* stage — nothing to enrol."
+            exit 0
+          fi
+          echo "Enrolling PR #$PR_NUMBER into the QA state machine (state:needs-qa)."
+          gh pr edit "$PR_NUMBER" --repo "$REPO" --add-label 'state:needs-qa'
