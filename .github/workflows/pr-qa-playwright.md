@@ -6,7 +6,7 @@ description: >
   fixtures), build the PR head pointed at a same-origin API proxy, and serve both on one
   port. The agent then authenticates with a fixture account, navigates to the *exact*
   feature the PR changes (creating any missing seed data via the backend REST API), runs a
-  focused Playwright check against the real surface, and captures durable before/after
+  focused Playwright check against the real surface, and captures durable desktop+mobile
   screenshots which it publishes with upload-asset. Durable screenshots are a HARD GATE:
   with no verified screenshot the PR can never reach state:qa-passed. A clean pass advances
   to state:qa-passed; an observed UI defect advances to state:needs-rework (with findings the
@@ -284,15 +284,16 @@ and screenshot it**, and then **advance the PR to exactly one next state**.
 ## The one rule that governs your verdict — the mandatory screenshot gate
 
 **A PR can only become `state:qa-passed` if you captured and published (via `upload-asset`)
-at least one durable screenshot of the actual changed feature, rendered against the real,
-seeded, logged-in backend.** No verified feature screenshot ⇒ you must **not** pass it. A
-login screen, a generic smoke path, or "the app booted" is **never** acceptable evidence
-that the feature works. This gate is absolute.
+durable screenshots of the actual changed feature — at BOTH desktop (1366×768) AND mobile
+(390×844) — rendered against the real, seeded, logged-in backend.** No verified feature
+screenshot at **each** viewport ⇒ you must **not** pass it. A login screen, a generic smoke
+path, or "the app booted" is **never** acceptable evidence that the feature works. This gate
+is absolute.
 
 Your three possible outcomes (pick exactly one, see Step 7):
 
-- **`state:qa-passed`** — you verified the changed feature UI with ≥1 published screenshot and
-  found no critical defect.
+- **`state:qa-passed`** — you verified the changed feature UI with published desktop **and**
+  mobile screenshots and found no critical defect.
 - **`state:needs-rework`** — you observed a UI/functional defect *caused by the PR* (including
   a PR build failure), and you have a screenshot and concrete findings the fixer can act on.
 - **`state:needs-human`** — an **infrastructure** failure that is **not the PR's fault** made
@@ -436,7 +437,7 @@ This is the heart of QA: verify the **specific** surface this PR changes, not a 
    comment — that is still the real feature UI, and the exhaustive data-specific E2E is owned
    by the coded suite `playwright.yaml`. Never fall back to a login page or an unrelated route.
 
-## Step 4 — Exercise and capture before/after screenshots
+## Step 4 — Exercise and capture before/after screenshots (desktop AND mobile — both mandatory)
 
 Capture **durable** evidence of the changed feature. Resize first, give each route a moment
 to render (`sleep 2`), and confirm you are still authenticated on the first feature route (a
@@ -447,16 +448,51 @@ curl -sf http://host.docker.internal/ >/dev/null && echo "server reachable"
 mkdir -p /tmp/gh-aw/agent
 playwright-cli browser_resize --width 1366 --height 768
 playwright-cli browser_navigate --url "http://host.docker.internal/<primary-route>"
-playwright-cli browser_take_screenshot --filename /tmp/gh-aw/agent/feature-before.png --full-page true
+playwright-cli browser_take_screenshot --filename /tmp/gh-aw/agent/feature-desktop.png --full-page true
 ```
 
-- **Before/after:** when the PR changes an interaction (a form, a toggle, a submit, a filter),
-  capture the feature **before** the interaction and **after** it (e.g. the form filled, then
-  the result/confirmation), so the screenshots actually demonstrate the changed behaviour. If
-  the change is purely a static render (a new column, label, layout), the "before/after" pair
-  is the primary route at **desktop (1366×768)** and **mobile (390×844)**.
-- Capture the **primary** affected route at desktop and mobile; capture any secondary affected
-  route at desktop only. Keep the total bounded (≈3–4 screenshots).
+### Both viewports are mandatory
+- Capture the **primary** changed route at **desktop (1366×768)** AND **mobile (390×844)** —
+  `browser_resize` to each and take a full-page shot at each. **A mobile screenshot of the
+  changed feature is a HARD requirement: a run with only desktop shots cannot be
+  `state:qa-passed`.** Use stable, viewport-named files (`feature-desktop.png` /
+  `feature-mobile.png`).
+- If the feature is intentionally hidden or collapses on mobile (responsive design), still
+  take the mobile shot of that route and **say so in the comment** — that shot is the proof
+  the responsive behaviour is correct, not an excuse to skip it.
+- Capture any **secondary** affected route at desktop (add mobile too when the change is
+  responsive). Keep the total bounded (≈4–6 screenshots now that both viewports are required).
+
+### Assert the surface BEFORE every shot — never trust a blind capture
+Before each `browser_take_screenshot`, run `playwright-cli browser_snapshot` and confirm the
+**specific** element/text the PR changes is actually present and settled in the accessibility
+tree (the new label, the Nth row, the open menu's specific options). A screenshot taken
+without this can silently capture a half-rendered page, a closing dropdown (greyed "ghost"
+options), an empty section, or content below the fold — and you would pass on nothing. If the
+expected element is genuinely absent *after* you have authenticated and seeded, that is a real
+defect (→ `state:needs-rework`), not a reason to shoot anyway.
+
+### Shoot the OUTCOME, not the click
+- Each screenshot must show the **end state** the user gets — not just a form, an open
+  dropdown, or an enabled button. Name each file for the outcome it proves
+  (e.g. `two-reports-rendered.png`), and target the component that actually **renders** the
+  result, not an audit/activity log that merely mentions it happened.
+- For a change about plurality ("create multiple X"), the proof shot must show **more than one
+  X actually rendered**: assert the count via `browser_snapshot` first, scroll the collection
+  into view, then take a `--full-page true` shot so all items land in one image.
+- **care_fe gotcha — empty collections render NOTHING.** Several review surfaces short-circuit
+  to `null` when their entity has no data (e.g. a diagnostic-report card renders only if the
+  report has an observation, attached file, or conclusion). Drive the feature into the state
+  where its UI actually renders (enter a value before finalizing) — otherwise you screenshot an
+  empty section and prove nothing.
+
+### Self-verify each proof shot
+After capturing, **look at each screenshot** and confirm it actually shows what you claim — the
+changed feature visible, not empty, cropped, or ghosted. If it does not, fix the scenario
+(settle / scroll / seed / `--full-page`) and re-shoot before publishing. Never publish or pass
+on a shot you have not visually confirmed.
+
+### Per-route hygiene
 - For any route that shows an error overlay or a blank page, also capture
   `playwright-cli browser_snapshot` so you can describe what went wrong.
 - After loading each route, capture the console with `playwright-cli browser_console_messages`.
@@ -484,10 +520,12 @@ Classify what you captured:
 ## Step 6 — Publish screenshots (mandatory gate)
 
 Use the `upload-asset` safe output to publish each representative screenshot — **every**
-Critical/Warning, plus at least one screenshot of the changed feature. Keep each returned URL;
-you will embed it inline in the comment with `?raw=true` appended so GitHub renders the image.
+Critical/Warning, plus the changed feature at **both** desktop **and** mobile. Keep each
+returned URL; you will embed it inline in the comment with `?raw=true` appended so GitHub
+renders the image.
 
-**If you have no published feature screenshot, you cannot emit `state:qa-passed`** — re-read
+**If you have no published feature screenshot at each viewport, you cannot emit
+`state:qa-passed`** — re-read
 the gate at the top. Your only valid verdicts without a feature screenshot are
 `state:needs-rework` (proven build failure) or `state:needs-human` (infrastructure failure).
 
