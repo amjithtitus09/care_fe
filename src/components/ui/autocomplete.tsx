@@ -1,4 +1,5 @@
 import { CaretSortIcon, CheckIcon, Cross2Icon } from "@radix-ui/react-icons";
+import { CircleIcon } from "lucide-react";
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 
@@ -30,16 +31,16 @@ import { CardListSkeleton } from "@/components/Common/SkeletonLoading";
 import useBreakpoints from "@/hooks/useBreakpoints";
 import { ShortcutBadge } from "@/Utils/keyboardShortcutComponents";
 
-interface AutoCompleteOption {
+interface AutoCompleteOption<T extends string = string> {
   label: string;
-  value: string;
+  value: T;
 }
 
-interface AutocompleteProps {
-  options: AutoCompleteOption[];
+interface AutocompleteProps<T extends string = string> {
+  options: AutoCompleteOption<T>[];
   isLoading?: boolean;
-  value: string;
-  onChange: (value: string) => void;
+  value: T;
+  onChange: (value: T) => void;
   onSearch?: (value: string) => void;
   placeholder?: string;
   inputPlaceholder?: string;
@@ -52,6 +53,12 @@ interface AutocompleteProps {
   freeInput?: boolean;
   closeOnSelect?: boolean;
   showClearButton?: boolean;
+  /**
+   * Selection indicator style for the options list.
+   * - "default": shows a checkmark next to the selected option.
+   * - "radio": shows a radio-style indicator, matching single-select forms.
+   */
+  variant?: "default" | "radio";
 
   ref?: React.RefCallback<HTMLButtonElement | null>;
 
@@ -59,7 +66,7 @@ interface AutocompleteProps {
   shortcutId?: string;
 }
 
-export default function Autocomplete({
+export default function Autocomplete<T extends string = string>({
   options,
   isLoading = false,
   value,
@@ -76,16 +83,17 @@ export default function Autocomplete({
   freeInput = false,
   closeOnSelect = true,
   showClearButton = true,
+  variant = "default",
   ref,
   shortcutId,
   ...props
-}: AutocompleteProps) {
+}: AutocompleteProps<T>) {
   const [open, setOpen] = React.useState(false);
   const isMobile = useBreakpoints({ default: true, sm: false });
 
   // Maintain an internal state for the input text when freeInput is enabled.
   // TODO : Find a better way to handle this, maybe as a seperate component
-  const [inputValue, setInputValue] = React.useState(value);
+  const [inputValue, setInputValue] = React.useState<string>(value);
 
   // Find a matching option from the options list (for non freeInput or when value matches an option)
   const selectedOption = options.find((option) => option.value === value);
@@ -118,7 +126,7 @@ export default function Autocomplete({
       if (matchingOption) {
         onChange(matchingOption.value);
       } else {
-        onChange(newValue);
+        onChange(newValue as T);
       }
     } else {
       if (onSearch) {
@@ -131,7 +139,7 @@ export default function Autocomplete({
     e.preventDefault();
     e.stopPropagation();
 
-    onChange("");
+    onChange("" as T);
 
     if (freeInput) {
       setInputValue("");
@@ -163,9 +171,9 @@ export default function Autocomplete({
               key={option.value}
               value={`${option.label} - ${option.value}`}
               onSelect={(v) => {
-                const currentValue =
-                  options.find((o) => `${o.label} - ${o.value}` === v)?.value ||
-                  "";
+                const currentValue = (options.find(
+                  (o) => `${o.label} - ${o.value}` === v,
+                )?.value || "") as T;
                 onChange(currentValue);
                 // If freeInput is enabled, update the input text with the selected option's label.
                 if (freeInput) {
@@ -179,12 +187,27 @@ export default function Autocomplete({
                 }
               }}
             >
-              <CheckIcon
-                className={cn(
-                  "mr-2 size-4",
-                  value === option.value ? "opacity-100" : "opacity-0",
-                )}
-              />
+              {variant === "radio" ? (
+                <span
+                  className={cn(
+                    "mr-2 flex size-4 shrink-0 items-center justify-center rounded-full border",
+                    value === option.value
+                      ? "border-primary-500"
+                      : "border-gray-300",
+                  )}
+                >
+                  {value === option.value && (
+                    <CircleIcon className="size-2 fill-primary text-primary" />
+                  )}
+                </span>
+              ) : (
+                <CheckIcon
+                  className={cn(
+                    "mr-2 size-4",
+                    value === option.value ? "opacity-100" : "opacity-0",
+                  )}
+                />
+              )}
               {option.label}
             </CommandItem>
           ))}
