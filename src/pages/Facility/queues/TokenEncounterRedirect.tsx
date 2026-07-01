@@ -52,6 +52,8 @@ const TokenEncounterRedirect = ({
           flow: "queue",
           year_of_birth: token.patient.year_of_birth?.toString() || "",
           partial_id: token.patient.id.slice(0, 5),
+          queue_id: queueId,
+          token_id: tokenId,
         }).toString()}`}
       />
     );

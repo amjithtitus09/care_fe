@@ -29,6 +29,7 @@ import { UpcomingAppointmentCard } from "@/pages/Appointments/components/Upcomin
 import { QuickAction } from "@/pages/Encounters/tabs/overview/quick-actions";
 import useCurrentFacility from "@/pages/Facility/utils/useCurrentFacility";
 import PatientHomeTabs from "@/pages/Patient/home/PatientHomeTabs";
+import QueueFlowBanner from "@/pages/Patient/QueueFlowBanner";
 import { PLUGIN_Component } from "@/PluginEngine";
 import patientApi from "@/types/emr/patient/patientApi";
 import query from "@/Utils/request/query";
@@ -44,13 +45,24 @@ interface QParams {
   partial_id: string;
   flow?: "queue" | "dispense";
   action?: "schedule" | "create_encounter";
+  queue_id?: string;
+  token_id?: string;
 }
 
 export default function PatientHome() {
   useShortcutSubContext("facility:patient:home");
   const { t } = useTranslation();
-  const [{ phone_number, year_of_birth, partial_id, flow, action }] =
-    useQueryParams<QParams>();
+  const [
+    {
+      phone_number,
+      year_of_birth,
+      partial_id,
+      flow,
+      action,
+      queue_id,
+      token_id,
+    },
+  ] = useQueryParams<QParams>();
   const queryClient = useQueryClient();
 
   const { facility, facilityId } = useCurrentFacility();
@@ -112,6 +124,13 @@ export default function PatientHome() {
         </Alert>
       ) : patientData ? (
         <div className="space-y-6 md:max-w-5xl mx-auto">
+          {queue_id && token_id && (
+            <QueueFlowBanner
+              facilityId={facilityId}
+              queueId={queue_id}
+              tokenId={token_id}
+            />
+          )}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="space-y-6 lg:col-span-2">
               <div className="">

@@ -6638,5 +6638,7 @@
   "zoom_in": "Zoom In",
   "zoom_out": "Zoom Out",
   "℞": "℞",
-  "state_logo_alt": "State logo"
+  "state_logo_alt": "State logo",
+  "back_to_queue": "Back to Queue",
+  "opened_from_queue": "Opened from queue"
 }
