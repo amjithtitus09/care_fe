@@ -60,33 +60,28 @@ export default function PrescriptionListSelector({
 }: PrescriptionListSelectorProps) {
   const { t } = useTranslation();
   const [openDrawer, setOpenDrawer] = React.useState(false);
-  const {
-    data,
-    isLoading,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery({
-    queryKey: ["prescriptions", patientId, encounterId, facilityId],
-    queryFn: async ({ pageParam = 0, signal }) => {
-      const response = await query(prescriptionApi.list, {
-        pathParams: { patientId },
-        queryParams: {
-          encounter: encounterId,
-          facility: facilityId,
-          limit: PRESCRIPTION_LIST_LIMIT,
-          offset: pageParam,
-        },
-      })({ signal });
-      return response as PaginatedResponse<PrescritionList>;
-    },
-    enabled: !!patientId && !!encounterId,
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => {
-      const currentOffset = allPages.length * PRESCRIPTION_LIST_LIMIT;
-      return currentOffset < lastPage.count ? currentOffset : null;
-    },
-  });
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteQuery({
+      queryKey: ["prescriptions", patientId, encounterId, facilityId],
+      queryFn: async ({ pageParam = 0, signal }) => {
+        const response = await query(prescriptionApi.list, {
+          pathParams: { patientId },
+          queryParams: {
+            encounter: encounterId,
+            facility: facilityId,
+            limit: PRESCRIPTION_LIST_LIMIT,
+            offset: pageParam,
+          },
+        })({ signal });
+        return response as PaginatedResponse<PrescritionList>;
+      },
+      enabled: !!patientId && !!encounterId,
+      initialPageParam: 0,
+      getNextPageParam: (lastPage, allPages) => {
+        const currentOffset = allPages.length * PRESCRIPTION_LIST_LIMIT;
+        return currentOffset < lastPage.count ? currentOffset : null;
+      },
+    });
 
   const prescriptions = data?.pages.flatMap((page) => page.results) ?? [];
 
