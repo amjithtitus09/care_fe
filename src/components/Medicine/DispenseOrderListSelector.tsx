@@ -38,32 +38,27 @@ export default function DispenseOrderListSelector({
 }: DispenseOrderListSelectorProps) {
   const { t } = useTranslation();
   const [openDrawer, setOpenDrawer] = React.useState(false);
-  const {
-    data,
-    isLoading,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery({
-    queryKey: ["dispenseOrders", patientId, facilityId],
-    queryFn: async ({ pageParam = 0, signal }) => {
-      const response = await query(dispenseOrderApi.list, {
-        pathParams: { facilityId: facilityId ?? "" },
-        queryParams: {
-          patient: patientId,
-          limit: DISPENSE_ORDERS_PAGE_SIZE,
-          offset: String(pageParam),
-        },
-      })({ signal });
-      return response as PaginatedResponse<DispenseOrderRead>;
-    },
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => {
-      const currentOffset = allPages.length * DISPENSE_ORDERS_PAGE_SIZE;
-      return currentOffset < lastPage.count ? currentOffset : null;
-    },
-    enabled: !!patientId && !!facilityId,
-  });
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteQuery({
+      queryKey: ["dispenseOrders", patientId, facilityId],
+      queryFn: async ({ pageParam = 0, signal }) => {
+        const response = await query(dispenseOrderApi.list, {
+          pathParams: { facilityId: facilityId ?? "" },
+          queryParams: {
+            patient: patientId,
+            limit: DISPENSE_ORDERS_PAGE_SIZE,
+            offset: String(pageParam),
+          },
+        })({ signal });
+        return response as PaginatedResponse<DispenseOrderRead>;
+      },
+      initialPageParam: 0,
+      getNextPageParam: (lastPage, allPages) => {
+        const currentOffset = allPages.length * DISPENSE_ORDERS_PAGE_SIZE;
+        return currentOffset < lastPage.count ? currentOffset : null;
+      },
+      enabled: !!patientId && !!facilityId,
+    });
 
   const dispenseOrders = React.useMemo(
     () => data?.pages.flatMap((page) => page.results) ?? [],
@@ -86,7 +81,12 @@ export default function DispenseOrderListSelector({
     } else if (!isLoading) {
       onSelectDispenseOrder(undefined);
     }
-  }, [dispenseOrders, selectedDispenseOrderId, onSelectDispenseOrder, isLoading]);
+  }, [
+    dispenseOrders,
+    selectedDispenseOrderId,
+    onSelectDispenseOrder,
+    isLoading,
+  ]);
 
   if (isLoading) {
     return (
