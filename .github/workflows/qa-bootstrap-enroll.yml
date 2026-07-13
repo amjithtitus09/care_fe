@@ -76,11 +76,10 @@ jobs:
           if printf '%s\n' "$labels" | grep -q '^state:'; then
             echo "PR #$PR_NUMBER already in a state:* stage — nothing to enrol."; exit 0
           fi
-          # Draft PRs wait until marked ready.
-          is_draft="$(gh pr view "$PR_NUMBER" --repo "$REPO" --json isDraft --jq '.isDraft')"
-          if [ "$is_draft" = "true" ]; then
-            echo "PR #$PR_NUMBER is a draft — waiting for ready_for_review."; exit 0
-          fi
+          # NOTE: draft status is NOT a gate. jira-pr-author intentionally opens
+          # draft PRs (draft = "no human has reviewed this yet"), and only
+          # jira-agent-labelled PRs get this far — so agent drafts must flow
+          # through Visual QA while still drafts.
 
           # SHIFT-LEFT GATE: every completed check on the head commit must have
           # succeeded, and at least one check must exist. Pending checks -> wait
