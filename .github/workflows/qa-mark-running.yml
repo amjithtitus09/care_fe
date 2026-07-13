@@ -34,22 +34,12 @@ jobs:
     # Only when the label just added is the QA entry label.
     if: github.event.label.name == 'state:needs-qa'
     steps:
-      - name: Mint GitHub App installation token
-        id: app-token
-        # Short-lived App installation token so the label write cascades past the
-        # recursion guard (an App-authored event triggers downstream workflows) and
-        # is attributed to the App installation, not a personal PAT.
-        uses: actions/create-github-app-token@v2
-        continue-on-error: true
-        with:
-          app-id: ${{ vars.CARE_AW_APP_ID }}
-          private-key: ${{ secrets.CARE_AW_APP_PRIVATE_KEY }}
       - name: Transition state:needs-qa -> state:qa-running
         env:
           # Agent PAT so the write is attributed to a write+ member and does not run into
           # the recursion guard. `state:qa-running` triggers no downstream workflow, so this
           # never cascades further. Falls back to GITHUB_TOKEN.
-          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |

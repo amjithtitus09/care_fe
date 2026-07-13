@@ -30,10 +30,8 @@ tools:
     toolsets: [issues, pull_requests, repos]
 
 safe-outputs:
-  # All writes via the App installation token for consistent attribution.
-  github-app:
-    app-id: ${{ vars.CARE_AW_APP_ID }}
-    private-key: ${{ secrets.CARE_AW_APP_PRIVATE_KEY }}
+  # Triage issue writes don't need to cascade; GITHUB_TOKEN fallback is fine.
+  github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
   create-issue:
     max: 1
     labels: [needs-human-triage]

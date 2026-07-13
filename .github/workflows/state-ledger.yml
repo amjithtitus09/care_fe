@@ -1,7 +1,7 @@
 name: QA State Machine — Ledger
 
 # Deterministic state ledger for the `state:*` QA label state machine (see
-# docs/QA_STATE_MACHINE.md in ohcnetwork/care-agentic-workflows).
+# docs/QA_STATE_MACHINE.md in amjithtitus09/care-agentic-workflows).
 #
 # Labels are great *triggers* but lousy *records*: a label can be removed by a bot,
 # consumed by gh-aw activation, or clobbered by a race — and the history is gone.

@@ -47,19 +47,9 @@ jobs:
       (contains(github.event.pull_request.labels.*.name, 'jira-agent') &&
        (github.event.action != 'labeled' || github.event.label.name == 'jira-agent'))
     steps:
-      - name: Mint GitHub App installation token
-        id: app-token
-        # Short-lived App installation token so the label write cascades past the
-        # recursion guard (an App-authored event triggers downstream workflows) and
-        # is attributed to the App installation, not a personal PAT.
-        uses: actions/create-github-app-token@v2
-        continue-on-error: true
-        with:
-          app-id: ${{ vars.CARE_AW_APP_ID }}
-          private-key: ${{ secrets.CARE_AW_APP_PRIVATE_KEY }}
       - name: Enroll when eligible and CI is green
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           EVENT: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}

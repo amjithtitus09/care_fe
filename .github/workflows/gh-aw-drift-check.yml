@@ -3,7 +3,7 @@ name: gh-aw Drift Check
 # Consumer-side drift guard. Fails when a compiled .lock.yml in this repo no longer
 # matches what `gh aw compile` produces from its checked-in .md stub — i.e. someone
 # hot-edited a lock file directly instead of changing the source in
-# ohcnetwork/care-agentic-workflows and running `gh aw update`.
+# amjithtitus09/care-agentic-workflows and running `gh aw update`.
 
 on:
   pull_request:
