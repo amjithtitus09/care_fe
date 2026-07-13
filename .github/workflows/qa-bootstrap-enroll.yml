@@ -84,7 +84,10 @@ jobs:
           # SHIFT-LEFT GATE: every completed check on the head commit must have
           # succeeded, and at least one check must exist. Pending checks -> wait
           # (the workflow_run trigger will re-evaluate on completion).
+          # (excluding this workflow's own in-flight "enroll" check — otherwise the
+          # gate deadlocks on itself always seeing 1 pending check).
           checks="$(gh pr checks "$PR_NUMBER" --repo "$REPO" --json state,name 2>/dev/null || echo '[]')"
+          checks="$(printf '%s' "$checks" | jq '[.[] | select(.name != "enroll")]')"
           total="$(printf '%s' "$checks" | jq 'length')"
           bad="$(printf '%s' "$checks" | jq '[.[] | select(.state=="FAILURE" or .state=="ERROR" or .state=="CANCELLED")] | length')"
           pending="$(printf '%s' "$checks" | jq '[.[] | select(.state=="PENDING" or .state=="QUEUED" or .state=="IN_PROGRESS")] | length')"
