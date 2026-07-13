@@ -46,6 +46,9 @@ tools:
     - "wc*"
 
 safe-outputs:
+  # Writes use the agent PAT so state-label events cascade past GitHub's
+  # recursion guard and are attributed to a write-access user.
+  github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
   # Reset stranded PRs. `target: '*'` lets the watchdog act on any PR it finds (there is no
   # single triggering PR on a schedule). The agent PAT is used so the `state:needs-qa` it adds
   # cascades to re-fire Visual QA — a label written with the default GITHUB_TOKEN would be
@@ -60,7 +63,6 @@ safe-outputs:
       - "state:needs-human"
     target: "*"
     max: 10
-    github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
   remove-labels:
     allowed:
       - "state:needs-qa"
@@ -70,10 +72,10 @@ safe-outputs:
       - "state:needs-human"
     target: "*"
     max: 10
-    github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
   add-comment:
     target: "*"
     max: 10
+source: amjithtitus09/care-agentic-workflows/workflows/qa-watchdog.md@main
 ---
 
 # QA State Machine — Watchdog

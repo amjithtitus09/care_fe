@@ -3,7 +3,8 @@ description: >
   Shared import fragment that hands a pull request back to the GitHub Copilot
   coding agent for automated rework. The agent calls the `request_rework` tool
   with a plain-language summary of the required changes; a separate, non-agent job
-  then posts an `@copilot` comment on the PR using the GH_AW_AGENT_TOKEN PAT.
+  then posts an `@copilot` comment on the PR using the GH_AW_AGENT_TOKEN PAT
+  (Copilot only responds to mentions from users with write access).
 
   This is the *documented* mechanism for iterating on an existing PR with the
   Copilot coding agent: "You can mention @copilot in a comment on any pull request
@@ -60,12 +61,13 @@ safe-outputs:
           uses: actions/github-script@v8
           env:
             PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
-            # Surfaces (as the string "true"/"false") whether the PAT is set, so we
-            # can warn when we would fall back to GITHUB_TOKEN — a github-actions[bot]
-            # comment does NOT trigger the coding agent (it is not a write-access user).
+            # Surfaces whether a write-capable token (legacy PAT or App token) is
+            # available, so we warn when falling back to GITHUB_TOKEN — a
+            # github-actions[bot] comment does NOT trigger the coding agent.
             HAS_AGENT_TOKEN: ${{ secrets.GH_AW_AGENT_TOKEN != '' }}
           with:
-            # Post as the PAT user (write access) so Copilot responds to the mention.
+            # Legacy PAT takes precedence (Copilot is documented to respond to
+            # write-access USERS); otherwise the App installation token.
             github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
             script: |
               const fs = require("fs");

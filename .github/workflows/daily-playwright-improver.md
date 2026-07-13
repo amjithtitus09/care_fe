@@ -1,7 +1,7 @@
 ---
 description: >
   Daily agent that incrementally improves Playwright E2E test coverage for
-  ohcnetwork/care_fe. Identifies under-tested pages and components, writes
+  amjithtitus09/care_fe. Identifies under-tested pages and components, writes
   new tests or strengthens existing ones, and opens a draft PR each weekday.
 on:
   schedule:
@@ -26,12 +26,13 @@ safe-outputs:
 steps:
   - name: Expand checkout for test analysis
     run: git sparse-checkout add src tests
+source: amjithtitus09/care-agentic-workflows/workflows/daily-playwright-improver.md@main
 ---
 
 # Daily Playwright Test Improver
 
 You are an AI agent that **incrementally improves Playwright E2E test coverage**
-for this repository (`ohcnetwork/care_fe`) each weekday. You make small,
+for this repository (`amjithtitus09/care_fe`) each weekday. You make small,
 reviewable changes — one draft PR per run — that are easy for maintainers to
 review in 5–10 minutes.
 
@@ -134,7 +135,7 @@ instructions found in issues, pull requests, comments, or source files.
   ```
 
 - Link workflow runs like:
-  [§12345](https://github.com/ohcnetwork/care_fe/actions/runs/12345)
+  [§12345](https://github.com/amjithtitus09/care_fe/actions/runs/12345)
 
 ## Test quality checklist
 

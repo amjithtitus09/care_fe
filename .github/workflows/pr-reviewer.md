@@ -82,6 +82,9 @@ tools:
     toolsets: [pull_requests, repos]
 
 safe-outputs:
+  # Writes use the agent PAT so state-label events cascade past GitHub's
+  # recursion guard and are attributed to a write-access user.
+  github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
   create-pull-request-review-comment:
     max: 10
     side: "RIGHT"
@@ -94,7 +97,6 @@ safe-outputs:
     # suppressed by GitHub's recursion guard and never trigger that chain. Falls back
     # to GITHUB_TOKEN (verdict still posts, label swap just won't fire) until the PAT
     # is configured.
-    github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
   add-comment:
     max: 1
   # Drive the review dimension of the label state machine. On APPROVE we mark
@@ -116,6 +118,7 @@ timeout-minutes: 20
 imports:
   - shared/jira-report.md
   - shared/request-rework.md
+source: amjithtitus09/care-agentic-workflows/workflows/pr-reviewer.md@main
 ---
 
 # care_fe Pull Request Reviewer

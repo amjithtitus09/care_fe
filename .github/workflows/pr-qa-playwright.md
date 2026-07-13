@@ -101,6 +101,9 @@ tools:
     - "docker compose -f care/docker-compose.local.yaml exec -T backend python manage.py dumpdata*"
 
 safe-outputs:
+  # Writes use the agent PAT so state-label events cascade past GitHub's
+  # recursion guard and are attributed to a write-access user.
+  github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
   # Durable screenshots are the MANDATORY pass gate — publish every representative capture.
   upload-asset:
   add-comment:
@@ -119,7 +122,6 @@ safe-outputs:
       - "state:needs-rework"
       - "state:needs-human"
     max: 1
-    github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
   remove-labels:
     allowed:
       - "state:needs-qa"
@@ -127,7 +129,6 @@ safe-outputs:
       - "state:qa-passed"
       - "state:needs-rework"
       - "state:needs-human"
-    github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
 
 # Check out the care backend alongside this repo (frontend) so the pre-agent steps can boot
 # it. Using the `checkout:` field (rather than a custom `actions/checkout` step) keeps
@@ -314,6 +315,7 @@ post-steps:
 
 imports:
   - shared/jira-report.md
+source: amjithtitus09/care-agentic-workflows/workflows/pr-qa-playwright.md@main
 ---
 
 # care_fe Visual QA (Playwright) — `state:needs-qa`

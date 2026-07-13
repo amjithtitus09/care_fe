@@ -71,6 +71,9 @@ tools:
     - "wc*"
 
 safe-outputs:
+  # Writes use the agent PAT so state-label events cascade past GitHub's
+  # recursion guard and are attributed to a write-access user.
+  github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
   create-pull-request:
     draft: true
     # Born with `jira-agent` so qa-bootstrap-enroll.yml stamps state:needs-qa and the QA machine
@@ -83,7 +86,6 @@ safe-outputs:
     preserve-branch-name: true
     # A run that produces no code change is a real failure for an authoring workflow.
     if-no-changes: "error"
-    github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
   missing-data:
 
 steps:
@@ -120,6 +122,7 @@ steps:
         printf '%s\n' "$desc"
       } > /tmp/gh-aw/agent/jira-task.md
       echo "Wrote validated task for $key to /tmp/gh-aw/agent/jira-task.md"
+source: amjithtitus09/care-agentic-workflows/workflows/jira-pr-author.md@main
 ---
 
 # Jira → Draft PR Author (pinned model)

@@ -59,6 +59,9 @@ tools:
     - "node*"
 
 safe-outputs:
+  # Writes use the agent PAT so state-label events cascade past GitHub's
+  # recursion guard and are attributed to a write-access user.
+  github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
   push-to-pull-request-branch:
   add-comment:
     max: 2
@@ -68,6 +71,7 @@ safe-outputs:
 
 imports:
   - shared/jira-report.md
+source: amjithtitus09/care-agentic-workflows/workflows/pr-fix.md@main
 ---
 
 # care_fe PR Fixer
