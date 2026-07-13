@@ -320,7 +320,7 @@ post-steps:
 
 imports:
   - shared/jira-report.md
-source: ohcnetwork/care-agentic-workflows/workflows/pr-qa-playwright.md@main
+source: amjithtitus09/care-agentic-workflows/workflows/pr-qa-playwright.md@main
 ---
 
 # care_fe Visual QA (Playwright) — `state:needs-qa`

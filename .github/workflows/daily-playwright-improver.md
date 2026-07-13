@@ -26,7 +26,7 @@ safe-outputs:
 steps:
   - name: Expand checkout for test analysis
     run: git sparse-checkout add src tests
-source: ohcnetwork/care-agentic-workflows/workflows/daily-playwright-improver.md@main
+source: amjithtitus09/care-agentic-workflows/workflows/daily-playwright-improver.md@main
 ---
 
 # Daily Playwright Test Improver

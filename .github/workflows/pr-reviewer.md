@@ -123,7 +123,7 @@ timeout-minutes: 20
 imports:
   - shared/jira-report.md
   - shared/request-rework.md
-source: ohcnetwork/care-agentic-workflows/workflows/pr-reviewer.md@main
+source: amjithtitus09/care-agentic-workflows/workflows/pr-reviewer.md@main
 ---
 
 # care_fe Pull Request Reviewer

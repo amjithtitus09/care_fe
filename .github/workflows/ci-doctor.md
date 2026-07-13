@@ -57,7 +57,7 @@ safe-outputs:
 imports:
   - shared/jira-report.md
   - shared/request-rework.md
-source: ohcnetwork/care-agentic-workflows/workflows/ci-doctor.md@main
+source: amjithtitus09/care-agentic-workflows/workflows/ci-doctor.md@main
 ---
 
 # CI Failure Doctor

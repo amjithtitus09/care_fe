@@ -18,7 +18,7 @@ safe-outputs:
   add-comment:
     max: 1
     target: "*"
-source: ohcnetwork/care-agentic-workflows/workflows/thank-you-note.md@main
+source: amjithtitus09/care-agentic-workflows/workflows/thank-you-note.md@main
 ---
 
 # Thank You Note Generator

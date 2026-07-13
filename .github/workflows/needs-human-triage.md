@@ -41,7 +41,7 @@ safe-outputs:
     max: 1
   add-comment:
     max: 1
-source: ohcnetwork/care-agentic-workflows/workflows/needs-human-triage.md@main
+source: amjithtitus09/care-agentic-workflows/workflows/needs-human-triage.md@main
 ---
 
 # Needs-Human Triage

@@ -80,7 +80,7 @@ safe-outputs:
   add-comment:
     target: "*"
     max: 10
-source: ohcnetwork/care-agentic-workflows/workflows/qa-watchdog.md@main
+source: amjithtitus09/care-agentic-workflows/workflows/qa-watchdog.md@main
 ---
 
 # QA State Machine — Watchdog

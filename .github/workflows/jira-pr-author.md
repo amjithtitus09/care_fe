@@ -127,7 +127,7 @@ steps:
         printf '%s\n' "$desc"
       } > /tmp/gh-aw/agent/jira-task.md
       echo "Wrote validated task for $key to /tmp/gh-aw/agent/jira-task.md"
-source: ohcnetwork/care-agentic-workflows/workflows/jira-pr-author.md@main
+source: amjithtitus09/care-agentic-workflows/workflows/jira-pr-author.md@main
 ---
 
 # Jira → Draft PR Author (pinned model)

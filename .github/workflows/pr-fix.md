@@ -76,7 +76,7 @@ safe-outputs:
 
 imports:
   - shared/jira-report.md
-source: ohcnetwork/care-agentic-workflows/workflows/pr-fix.md@main
+source: amjithtitus09/care-agentic-workflows/workflows/pr-fix.md@main
 ---
 
 # care_fe PR Fixer

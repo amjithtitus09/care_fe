@@ -35,7 +35,7 @@ safe-outputs:
 # Forked from githubnext/agentics repo-status.md@d63b34de (upstream pin removed —
 # this copy now carries care-specific QA-pipeline observability requirements and
 # is canonically maintained in care-agentic-workflows).
-source: ohcnetwork/care-agentic-workflows/workflows/daily-repo-status.md@main
+source: amjithtitus09/care-agentic-workflows/workflows/daily-repo-status.md@main
 ---
 
 # Repo Status
