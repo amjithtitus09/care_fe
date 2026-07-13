@@ -267,6 +267,25 @@ export default function ServiceRequestShow({
     activityDefinition.observation_result_requirements ?? [];
   const diagnosticReports = request.diagnostic_reports || [];
 
+  // Diagnostic report codes configured on the activity definition. When
+  // multiple are configured, one diagnostic report can be created per code.
+  const diagnosticReportCodes =
+    activityDefinition.diagnostic_report_codes ?? [];
+  const hasPendingReportCreation =
+    diagnosticReportCodes.length > 0 &&
+    diagnosticReportCodes.some(
+      (code) =>
+        !diagnosticReports.some((report) => report.code?.code === code.code),
+    );
+  const hasNonFinalReport = diagnosticReports.some(
+    (report) => report.status !== DiagnosticReportStatus.final,
+  );
+  const showDiagnosticReportForm =
+    diagnosticReportCodes.length > 0
+      ? hasPendingReportCreation || hasNonFinalReport
+      : !diagnosticReports.length ||
+        diagnosticReports[0]?.status !== DiagnosticReportStatus.final;
+
   const assignedSpecimenIds = new Set<string>();
 
   const preparePrintAllQRCodes = async () => {
@@ -596,9 +615,7 @@ export default function ServiceRequestShow({
                 </DropdownMenu>
               </div>
             )}
-            {(!diagnosticReports.length ||
-              diagnosticReports[0]?.status !==
-                DiagnosticReportStatus.final) && (
+            {showDiagnosticReportForm && (
               <DiagnosticReportForm
                 patientId={request.encounter.patient.id}
                 facilityId={facilityId}
