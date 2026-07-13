@@ -36,7 +36,13 @@ permissions: read-all
 
 engine:
   id: copilot
-  model: claude-opus-4.8
+  # QA is navigation + DOM reasoning + vision (screenshot verification) + tool
+  # orchestration — not deep code generation. Sonnet-4.5 delivers top-tier agentic
+  # tool-use and vision at the STANDARD (non-premium) Copilot request tier, so a
+  # heavy ~55-min QA run no longer exhausts the premium-request / AI-credit budget
+  # and 403s at the steering proxy (opus did — see PR #104/#106 failures 2026-07-13).
+  # Authoring stays on opus (jira-pr-author) where deep reasoning actually pays off.
+  model: claude-sonnet-4.5
 
 # The happy path (mark running → log in → seed if needed → navigate → screenshot → upload →
 # comment → labels) fits comfortably here; the cap bounds wall-clock so a single run never
@@ -354,10 +360,22 @@ Never run `npm` or `node`. Only use `playwright-cli` against the already-running
 `curl` against the same-origin API. Do not modify any files under `tests/` or `src/`.
 
 **Run simple, single shell commands.** The sandbox approves each command by its leading
-program (e.g. `cat`, `git diff`, `head`, `grep`, `wc`, `python3`, `curl`, `playwright-cli`).
-Chained one-liners (`a; b`, `a && b`, `a || b`) and complex redirects are likely to be
-**denied** and waste turns — issue one command at a time. You do **not** need shell to post
-results: write files with the `write` tool and emit results with the safe-output tools.
+program (e.g. `cat`, `git diff`, `head`, `grep`, `wc`, `python3`). Chained one-liners
+(`a; b`, `a && b`, `a || b`), variable assignments (`TOKEN=...`), command substitution
+(`$(...)`/backticks), and complex redirects are **denied** and waste turns — issue one bare
+command at a time. You do **not** need shell to post results: write files with the `write`
+tool and emit results with the safe-output tools.
+
+**Your only jobs that touch the app are through the browser tools (`playwright-cli` browser
+navigation/click/type/snapshot/screenshot) — never through the shell.** You do **not** seed
+data, read tokens, or call the backend API from the shell; the runner already seeded the
+backend before you started (see Step 3).
+
+**NEVER retry a command that was denied or blocked.** If a command returns "Permission denied",
+"could not request permission", or "blocked", that exact form will NEVER succeed on retry —
+repeating it only burns your token budget and will eventually get the whole run killed with a
+provider 403. On the FIRST denial, do not repeat it: switch to a bare allowed command, or fall
+back to screenshotting the closest real surface per Step 4. Do not loop.
 
 ## Security
 
@@ -374,13 +392,13 @@ The fixture credentials below are throwaway test accounts on an ephemeral runner
 - **Run number**: ${{ github.run_number }}
 - **Preview URL**: http://host.docker.internal/ (PR head, already built and serving)
 - **API**: same origin — the SPA's calls to `http://host.docker.internal/api/...` are
-  reverse-proxied to the care backend. The app calls it for you; you may also call it
-  directly with `curl` (Step 3) to **seed missing data**.
+  reverse-proxied to the care backend. The app calls it for you as you navigate the UI; you do
+  **not** call it directly (no seeding — the runner already loaded fixtures).
 - **Backend / fixtures**: a real care backend with loaded fixtures is expected to be running.
   Whether it actually came up is recorded in `/tmp/gh-aw/agent/backend-status.txt` (`up` or
   `down`) — always read it first.
 - **Fixture login**: username `admin`, password `admin` (a superuser). A pre-minted token is
-  also published at `/__qa_auth.json` and on disk at `/tmp/gh-aw/agent/auth.json`.
+  published at `/__qa_auth.json` for the Step 2 localStorage login only.
 
 ## Step 0 — Confirm the environment, or escalate / rework
 
@@ -441,7 +459,7 @@ Establish an authenticated session so feature routes render real data:
 5. If you genuinely cannot authenticate after both attempts, treat it as an **infrastructure**
    failure: go to Step 7 with a **`state:needs-human`** verdict (do not blame the PR).
 
-## Step 3 — Map the diff to the exact feature, and seed data if needed
+## Step 3 — Map the diff to the exact feature and reach it through the UI
 
 This is the heart of QA: verify the **specific** surface this PR changes, not a generic path.
 
@@ -460,43 +478,28 @@ This is the heart of QA: verify the **specific** surface this PR changes, not a 
    questionnaire component → the specific questionnaire/encounter screen; a facility settings
    form → that settings tab. Identify the single **primary** surface the PR is most about.
 
-3. **Reach the exact state the PR touches.** Prefer an existing fixture record. If the precise
-   record/state the PR changes does **not** exist in the fixtures, **create it via the backend
-   REST API** rather than giving up — you have a superuser token. Read the token once:
+3. **Reach the exact state the PR touches — using ONLY the browser UI.** The backend is
+   **already seeded** by the runner before you started (fixtures loaded via
+   `manage.py load_fixtures`), and you are logged in through the app. Navigate to the feature
+   using the **app's own UI** — clicks, forms, search, and navigation via `playwright-cli`
+   browser tools. Prefer an existing seeded record; if the app lets you create the record
+   through its own UI as part of exercising the feature, do that.
 
-   ```bash
-   cat /tmp/gh-aw/agent/auth.json
-   ```
+   **You have NO shell access to seed data, and you do not need it.** Beyond the Step 2 login
+   `browser_evaluate` (the one `fetch('/__qa_auth.json')` call that sets localStorage), do
+   **not** call the backend REST API to create/seed data — no `curl`, no
+   `playwright-cli --raw eval`, no `browser_evaluate` that POSTs to `/api/...`, no `docker`, no
+   `manage.py`. Inside your sandbox those are permission-denied or network-blocked, and
+   retrying them burns your token budget and gets the whole run killed with a provider 403.
+   Ignore any lingering mention of `/tmp/gh-aw/agent/auth.json` for seeding — seeding is the
+   runner's job, not yours.
 
-   Then create the minimum entity needed with a single `curl` against the same-origin API,
-   for example:
-
-   ```bash
-   curl -s -X POST http://host.docker.internal/api/v1/<resource>/ -H "Authorization: Bearer <ACCESS>" -H "Content-Type: application/json" -d '<json>'
-   ```
-
-   Discover the right endpoint/payload from the changed code and the app's own network calls
-   (you can read `src/types/**/<domain>Api.ts` route files with `cat`/`grep`). Keep seeding
-   **minimal and bounded** — create only what you need to render the changed feature, and
-   spend at most a few attempts.
-
-4. **When the graph is too complex for REST, seed it through the Django ORM** in the
-   already-running backend container — the same depth the coded suite's `*.setup.ts` seeders
-   reach. This execs against the live `backend` service (compose project `care`); use the
-   exact, allowlisted prefix:
-
-   ```bash
-   docker compose -f care/docker-compose.local.yaml exec -T backend python manage.py shell -c "
-   # import the app models you discovered from the changed backend code, build the minimal
-   # linked graph, and print the created object's external_id so you can navigate to it.
-   "
-   ```
-
-   Discover model/app names from the changed backend code (or `care/**/models.py`). Prefer a
-   short `shell -c` script for a few linked objects, or `loaddata` for a fixture file you
-   construct. Keep it **bounded and idempotent** (look up before create), print the IDs the
-   route needs, and never run destructive or bulk operations. REST stays fine for simple single
-   records; reach for the ORM only when the REST surface can't express the graph.
+4. **If the precise record the PR changes is not present in the seeded data**, do NOT attempt to
+   create it via API/ORM/shell. Instead, screenshot the **closest real surface of the same
+   feature** — the list/index the component renders, the empty-state, or the nearest reachable
+   screen — and note in your findings that the exact record wasn't in the fixtures. A durable
+   screenshot of the real (if adjacent) surface still satisfies the hard screenshot gate; a
+   seeding attempt that loops does not.
 
 5. If after a reasonable effort you still cannot construct the state, screenshot the closest
    real surface of the *same feature* (its list, empty state, or form) and say so in the
