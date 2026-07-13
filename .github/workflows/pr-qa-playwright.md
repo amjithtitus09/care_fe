@@ -101,6 +101,14 @@ tools:
     - "docker compose -f care/docker-compose.local.yaml exec -T backend python manage.py dumpdata*"
 
 safe-outputs:
+  # All safe-output writes are performed with a short-lived GitHub App installation
+  # token (minted per run, auto-revoked). App-authored events are attributed to the
+  # app installation (write access), so they cascade past GitHub's recursion guard
+  # exactly like the old GH_AW_AGENT_TOKEN PAT — without a personal-account coupling.
+  # Consumer repos must configure: vars.CARE_AW_APP_ID + secrets.CARE_AW_APP_PRIVATE_KEY.
+  github-app:
+    app-id: ${{ vars.CARE_AW_APP_ID }}
+    private-key: ${{ secrets.CARE_AW_APP_PRIVATE_KEY }}
   # Durable screenshots are the MANDATORY pass gate — publish every representative capture.
   upload-asset:
   add-comment:
@@ -119,7 +127,6 @@ safe-outputs:
       - "state:needs-rework"
       - "state:needs-human"
     max: 1
-    github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
   remove-labels:
     allowed:
       - "state:needs-qa"
@@ -127,7 +134,6 @@ safe-outputs:
       - "state:qa-passed"
       - "state:needs-rework"
       - "state:needs-human"
-    github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
 
 # Check out the care backend alongside this repo (frontend) so the pre-agent steps can boot
 # it. Using the `checkout:` field (rather than a custom `actions/checkout` step) keeps
@@ -314,6 +320,7 @@ post-steps:
 
 imports:
   - shared/jira-report.md
+source: ohcnetwork/care-agentic-workflows/workflows/pr-qa-playwright.md@main
 ---
 
 # care_fe Visual QA (Playwright) — `state:needs-qa`

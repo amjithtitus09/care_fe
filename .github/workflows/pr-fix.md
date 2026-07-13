@@ -59,6 +59,14 @@ tools:
     - "node*"
 
 safe-outputs:
+  # All safe-output writes are performed with a short-lived GitHub App installation
+  # token (minted per run, auto-revoked). App-authored events are attributed to the
+  # app installation (write access), so they cascade past GitHub's recursion guard
+  # exactly like the old GH_AW_AGENT_TOKEN PAT — without a personal-account coupling.
+  # Consumer repos must configure: vars.CARE_AW_APP_ID + secrets.CARE_AW_APP_PRIVATE_KEY.
+  github-app:
+    app-id: ${{ vars.CARE_AW_APP_ID }}
+    private-key: ${{ secrets.CARE_AW_APP_PRIVATE_KEY }}
   push-to-pull-request-branch:
   add-comment:
     max: 2
@@ -68,6 +76,7 @@ safe-outputs:
 
 imports:
   - shared/jira-report.md
+source: ohcnetwork/care-agentic-workflows/workflows/pr-fix.md@main
 ---
 
 # care_fe PR Fixer

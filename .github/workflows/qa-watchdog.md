@@ -46,6 +46,14 @@ tools:
     - "wc*"
 
 safe-outputs:
+  # All safe-output writes are performed with a short-lived GitHub App installation
+  # token (minted per run, auto-revoked). App-authored events are attributed to the
+  # app installation (write access), so they cascade past GitHub's recursion guard
+  # exactly like the old GH_AW_AGENT_TOKEN PAT — without a personal-account coupling.
+  # Consumer repos must configure: vars.CARE_AW_APP_ID + secrets.CARE_AW_APP_PRIVATE_KEY.
+  github-app:
+    app-id: ${{ vars.CARE_AW_APP_ID }}
+    private-key: ${{ secrets.CARE_AW_APP_PRIVATE_KEY }}
   # Reset stranded PRs. `target: '*'` lets the watchdog act on any PR it finds (there is no
   # single triggering PR on a schedule). The agent PAT is used so the `state:needs-qa` it adds
   # cascades to re-fire Visual QA — a label written with the default GITHUB_TOKEN would be
@@ -60,7 +68,6 @@ safe-outputs:
       - "state:needs-human"
     target: "*"
     max: 10
-    github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
   remove-labels:
     allowed:
       - "state:needs-qa"
@@ -70,10 +77,10 @@ safe-outputs:
       - "state:needs-human"
     target: "*"
     max: 10
-    github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
   add-comment:
     target: "*"
     max: 10
+source: ohcnetwork/care-agentic-workflows/workflows/qa-watchdog.md@main
 ---
 
 # QA State Machine — Watchdog

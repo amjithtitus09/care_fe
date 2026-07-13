@@ -3,58 +3,111 @@ name: QA State Machine — Enroll
 # Entry point of the `state:*` QA label state machine (see .github/QA_STATE_MACHINE.md).
 #
 # This is intentionally a plain, deterministic GitHub Actions workflow rather than an
-# agentic gh-aw workflow: enrolling a PR is a single conditional label write, so spinning
-# up the gh-aw firewall/agent for it would be wasteful and slow. It mirrors the repo's
-# existing deterministic label automation (pr-automation.yml).
+# agentic gh-aw workflow: enrolling a PR is a conditional label write, so spinning
+# up the gh-aw firewall/agent for it would be wasteful and slow.
 #
-# When a PR carries the `jira-agent` opt-in label (applied by a maintainer or the managed
-# Copilot-for-Jira agent) and is not already in a `state:*` stage, it adds the first
-# `state:needs-qa` label, which the QA workflow (pr-qa-playwright.md) reacts to.
+# SHIFT-LEFT GATE: a PR is only enrolled into Visual QA (state:needs-qa) once the
+# cheap deterministic CI (lint / type-check / build) is GREEN on its head commit.
+# A draft that fails CI loops through ci-doctor / pr-fix first, instead of burning
+# a ~55-minute backend-boot Visual QA run on code that doesn't even build.
+#
+# Triggers:
+#   * pull_request_target label/open events — the original enrolment path; if CI
+#     hasn't finished yet, this run simply exits and the workflow_run trigger below
+#     picks the PR up when CI completes.
+#   * workflow_run (CI workflows completed) — re-evaluates enrolment when the gate
+#     that blocked an earlier attempt turns green.
 
 on:
   pull_request_target:
     types: [opened, reopened, ready_for_review, labeled]
+  workflow_run:
+    # Names must match the repo's deterministic CI workflows.
+    workflows: ["Lint Code Base", "Playwright Tests", "Build PR Preview"]
+    types: [completed]
 
-# `pull_request_target` runs in the base-repo context. The label write itself is done with
-# the agent PAT (see GH_TOKEN below), not GITHUB_TOKEN; permissions here only cover the
-# fallback path. The job never checks out or runs PR code and is gated on the trusted
-# `jira-agent` opt-in, so it is low-risk.
 permissions:
   pull-requests: write
   issues: write
+  checks: read
+  actions: read
 
 concurrency:
-  # Serialize per-PR so two near-simultaneous events can't both add the entry label.
-  group: qa-enroll-${{ github.event.pull_request.number }}
+  group: qa-enroll-${{ github.event.pull_request.number || github.event.workflow_run.head_sha || github.run_id }}
   cancel-in-progress: false
 
 jobs:
   enroll:
     runs-on: ubuntu-latest
-    # Only act on enrolled PRs. On a `labeled` event, also require that the label just
-    # added was `jira-agent`, so we don't re-evaluate on unrelated labelling churn.
+    # For label events: only act on enrolled PRs, and only when the label just added
+    # was `jira-agent`. workflow_run events are filtered in-script (the PR must be
+    # located from the head SHA first).
     if: >-
-      contains(github.event.pull_request.labels.*.name, 'jira-agent') &&
-      (github.event.action != 'labeled' || github.event.label.name == 'jira-agent')
+      github.event_name == 'workflow_run' ||
+      (contains(github.event.pull_request.labels.*.name, 'jira-agent') &&
+       (github.event.action != 'labeled' || github.event.label.name == 'jira-agent'))
     steps:
-      - name: Add state:needs-qa when the PR is not already in a state
+      - name: Mint GitHub App installation token
+        id: app-token
+        # Short-lived App installation token so the label write cascades past the
+        # recursion guard (an App-authored event triggers downstream workflows) and
+        # is attributed to the App installation, not a personal PAT.
+        uses: actions/create-github-app-token@v2
+        continue-on-error: true
+        with:
+          app-id: ${{ vars.CARE_AW_APP_ID }}
+          private-key: ${{ secrets.CARE_AW_APP_PRIVATE_KEY }}
+      - name: Enroll when eligible and CI is green
         env:
-          # Use the agent PAT so the `state:needs-qa` label this adds will (a) actually fire
-          # the QA workflow — a label written with the default GITHUB_TOKEN is suppressed by
-          # GitHub's recursion guard and never triggers another workflow — and (b) be
-          # attributed to a write+ member so the QA workflow's activation membership gate
-          # (admin/maintainer/write) passes. Falls back to GITHUB_TOKEN, under which the
-          # cascade simply won't fire until the PAT is configured.
-          GH_TOKEN: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
-          # Mutual exclusivity: only enrol if the PR carries no state:* label yet.
-          labels="$(gh pr view "$PR_NUMBER" --repo "$REPO" --json labels --jq '.labels[].name')"
-          if printf '%s\n' "$labels" | grep -q '^state:'; then
-            echo "PR #$PR_NUMBER already in a state:* stage — nothing to enrol."
-            exit 0
+
+          # Resolve the PR under evaluation.
+          if [ "$EVENT" = "workflow_run" ]; then
+            PR_NUMBER="$(gh pr list --repo "$REPO" --state open \
+              --search "$HEAD_SHA" --json number --jq '.[0].number' || true)"
+            if [ -z "${PR_NUMBER:-}" ] || [ "$PR_NUMBER" = "null" ]; then
+              echo "No open PR for $HEAD_SHA — nothing to enrol."; exit 0
+            fi
           fi
+
+          labels="$(gh pr view "$PR_NUMBER" --repo "$REPO" --json labels --jq '.labels[].name')"
+
+          # Must be opted in.
+          if ! printf '%s\n' "$labels" | grep -qx 'jira-agent'; then
+            echo "PR #$PR_NUMBER is not jira-agent enrolled — skipping."; exit 0
+          fi
+          # Mutual exclusivity: only enrol if the PR carries no state:* label yet.
+          if printf '%s\n' "$labels" | grep -q '^state:'; then
+            echo "PR #$PR_NUMBER already in a state:* stage — nothing to enrol."; exit 0
+          fi
+          # Draft PRs wait until marked ready.
+          is_draft="$(gh pr view "$PR_NUMBER" --repo "$REPO" --json isDraft --jq '.isDraft')"
+          if [ "$is_draft" = "true" ]; then
+            echo "PR #$PR_NUMBER is a draft — waiting for ready_for_review."; exit 0
+          fi
+
+          # SHIFT-LEFT GATE: every completed check on the head commit must have
+          # succeeded, and at least one check must exist. Pending checks -> wait
+          # (the workflow_run trigger will re-evaluate on completion).
+          checks="$(gh pr checks "$PR_NUMBER" --repo "$REPO" --json state,name 2>/dev/null || echo '[]')"
+          total="$(printf '%s' "$checks" | jq 'length')"
+          bad="$(printf '%s' "$checks" | jq '[.[] | select(.state=="FAILURE" or .state=="ERROR" or .state=="CANCELLED")] | length')"
+          pending="$(printf '%s' "$checks" | jq '[.[] | select(.state=="PENDING" or .state=="QUEUED" or .state=="IN_PROGRESS")] | length')"
+          if [ "$total" -eq 0 ]; then
+            echo "PR #$PR_NUMBER has no checks yet — waiting."; exit 0
+          fi
+          if [ "$bad" -gt 0 ]; then
+            echo "PR #$PR_NUMBER has $bad failing checks — CI must be green before Visual QA (ci-doctor/pr-fix will handle it)."; exit 0
+          fi
+          if [ "$pending" -gt 0 ]; then
+            echo "PR #$PR_NUMBER has $pending pending checks — will re-evaluate when CI completes."; exit 0
+          fi
+
           echo "Enrolling PR #$PR_NUMBER into the QA state machine (state:needs-qa)."
           gh pr edit "$PR_NUMBER" --repo "$REPO" --add-label 'state:needs-qa'

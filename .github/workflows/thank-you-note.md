@@ -8,6 +8,9 @@ on:
     types:
       - closed
 permissions: read-all
+# pull_request_target + checkout of PR code is a pwn-request vector; this workflow
+# is pure GitHub-API work, so never check out the (untrusted) PR head.
+checkout: false
 tools:
   github:
     toolsets: [default]
@@ -15,6 +18,7 @@ safe-outputs:
   add-comment:
     max: 1
     target: "*"
+source: ohcnetwork/care-agentic-workflows/workflows/thank-you-note.md@main
 ---
 
 # Thank You Note Generator

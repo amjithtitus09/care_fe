@@ -82,6 +82,14 @@ tools:
     toolsets: [pull_requests, repos]
 
 safe-outputs:
+  # All safe-output writes are performed with a short-lived GitHub App installation
+  # token (minted per run, auto-revoked). App-authored events are attributed to the
+  # app installation (write access), so they cascade past GitHub's recursion guard
+  # exactly like the old GH_AW_AGENT_TOKEN PAT — without a personal-account coupling.
+  # Consumer repos must configure: vars.CARE_AW_APP_ID + secrets.CARE_AW_APP_PRIVATE_KEY.
+  github-app:
+    app-id: ${{ vars.CARE_AW_APP_ID }}
+    private-key: ${{ secrets.CARE_AW_APP_PRIVATE_KEY }}
   create-pull-request-review-comment:
     max: 10
     side: "RIGHT"
@@ -94,7 +102,6 @@ safe-outputs:
     # suppressed by GitHub's recursion guard and never trigger that chain. Falls back
     # to GITHUB_TOKEN (verdict still posts, label swap just won't fire) until the PAT
     # is configured.
-    github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
   add-comment:
     max: 1
   # Drive the review dimension of the label state machine. On APPROVE we mark
@@ -116,6 +123,7 @@ timeout-minutes: 20
 imports:
   - shared/jira-report.md
   - shared/request-rework.md
+source: ohcnetwork/care-agentic-workflows/workflows/pr-reviewer.md@main
 ---
 
 # care_fe Pull Request Reviewer

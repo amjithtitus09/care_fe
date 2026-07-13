@@ -1,0 +1,40 @@
+name: gh-aw Drift Check
+
+# Consumer-side drift guard. Fails when a compiled .lock.yml in this repo no longer
+# matches what `gh aw compile` produces from its checked-in .md stub — i.e. someone
+# hot-edited a lock file directly instead of changing the source in
+# ohcnetwork/care-agentic-workflows and running `gh aw update`.
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/*.md"
+      - ".github/workflows/*.lock.yml"
+  schedule:
+    - cron: "23 5 * * 1" # weekly sweep, Monday 05:23 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install gh-aw
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh extension install github/gh-aw
+      - name: Recompile and diff
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh aw compile
+          if ! git diff --exit-code -- '.github/workflows/*.lock.yml'; then
+            echo "::error::Compiled .lock.yml files drifted from their .md sources."
+            echo "::error::Edit sources in care-agentic-workflows and run 'gh aw update' — do not hot-edit lock files."
+            exit 1
+          fi
+          echo "All lock files match their sources."

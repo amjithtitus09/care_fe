@@ -65,6 +65,14 @@ tools:
     - "node*"
 
 safe-outputs:
+  # All safe-output writes are performed with a short-lived GitHub App installation
+  # token (minted per run, auto-revoked). App-authored events are attributed to the
+  # app installation (write access), so they cascade past GitHub's recursion guard
+  # exactly like the old GH_AW_AGENT_TOKEN PAT — without a personal-account coupling.
+  # Consumer repos must configure: vars.CARE_AW_APP_ID + secrets.CARE_AW_APP_PRIVATE_KEY.
+  github-app:
+    app-id: ${{ vars.CARE_AW_APP_ID }}
+    private-key: ${{ secrets.CARE_AW_APP_PRIVATE_KEY }}
   # Push the minimal fix to the PR branch. Constrain to the app surface so the agent can
   # never touch workflows, configs, or CI; `[skip-ci]` keeps the repo's other CI from
   # running on the rework commit (Visual QA is re-triggered by the state:needs-qa re-label,
@@ -90,7 +98,6 @@ safe-outputs:
       - "state:needs-rework"
       - "state:needs-human"
     max: 1
-    github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
   remove-labels:
     allowed:
       - "state:needs-qa"
@@ -98,12 +105,12 @@ safe-outputs:
       - "state:qa-passed"
       - "state:needs-rework"
       - "state:needs-human"
-    github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
   # Used by the loop guard when escalating, to put a human on the PR.
   assign-to-user:
 
 imports:
   - shared/jira-report.md
+source: ohcnetwork/care-agentic-workflows/workflows/pr-rework.md@main
 ---
 
 # care_fe PR Rework — `state:needs-rework`

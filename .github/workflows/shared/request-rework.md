@@ -3,7 +3,13 @@ description: >
   Shared import fragment that hands a pull request back to the GitHub Copilot
   coding agent for automated rework. The agent calls the `request_rework` tool
   with a plain-language summary of the required changes; a separate, non-agent job
-  then posts an `@copilot` comment on the PR using the GH_AW_AGENT_TOKEN PAT.
+  then posts an `@copilot` comment on the PR using a short-lived GitHub App
+  installation token (vars.CARE_AW_APP_ID + secrets.CARE_AW_APP_PRIVATE_KEY).
+
+  CAVEAT: GitHub documents that Copilot responds to mentions from *users with write
+  access*. An App-authored comment is a bot identity; if the coding agent ignores
+  it in practice, set the optional legacy secret GH_AW_AGENT_TOKEN (a write-access
+  PAT), which — when present — takes precedence for THIS comment only.
 
   This is the *documented* mechanism for iterating on an existing PR with the
   Copilot coding agent: "You can mention @copilot in a comment on any pull request
@@ -56,17 +62,29 @@ safe-outputs:
             taken from the triggering pull_request/issue event.
           required: false
       steps:
+        - name: Mint GitHub App installation token
+          id: app-token
+          # Short-lived installation token (auto-revoked when the job ends). The App
+          # must be installed on this repo with pull-requests: write.
+          uses: actions/create-github-app-token@v2
+          # Don't fail the hand-back if the App isn't configured yet — fall through
+          # to the legacy PAT / GITHUB_TOKEN chain below (with its warning).
+          continue-on-error: true
+          with:
+            app-id: ${{ vars.CARE_AW_APP_ID }}
+            private-key: ${{ secrets.CARE_AW_APP_PRIVATE_KEY }}
         - name: Hand back to the Copilot coding agent
           uses: actions/github-script@v8
           env:
             PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
-            # Surfaces (as the string "true"/"false") whether the PAT is set, so we
-            # can warn when we would fall back to GITHUB_TOKEN — a github-actions[bot]
-            # comment does NOT trigger the coding agent (it is not a write-access user).
-            HAS_AGENT_TOKEN: ${{ secrets.GH_AW_AGENT_TOKEN != '' }}
+            # Surfaces whether a write-capable token (legacy PAT or App token) is
+            # available, so we warn when falling back to GITHUB_TOKEN — a
+            # github-actions[bot] comment does NOT trigger the coding agent.
+            HAS_AGENT_TOKEN: ${{ secrets.GH_AW_AGENT_TOKEN != '' || steps.app-token.outputs.token != '' }}
           with:
-            # Post as the PAT user (write access) so Copilot responds to the mention.
-            github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
+            # Legacy PAT takes precedence (Copilot is documented to respond to
+            # write-access USERS); otherwise the App installation token.
+            github-token: ${{ secrets.GH_AW_AGENT_TOKEN || steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
             script: |
               const fs = require("fs");
               const staged = process.env.GH_AW_SAFE_OUTPUTS_STAGED === "true";
@@ -129,10 +147,11 @@ safe-outputs:
 
               if (process.env.HAS_AGENT_TOKEN !== "true") {
                 core.warning(
-                  "GH_AW_AGENT_TOKEN is not configured; posting the hand-back as the " +
+                  "Neither the GitHub App (CARE_AW_APP_ID/CARE_AW_APP_PRIVATE_KEY) nor the " +
+                    "legacy GH_AW_AGENT_TOKEN PAT is configured; posting the hand-back with the " +
                     "default Actions token. The Copilot coding agent only responds to " +
-                    "comments from users with write access, so it will NOT pick this up. " +
-                    "Add the GH_AW_AGENT_TOKEN PAT to enable autonomous rework.",
+                    "write-access identities, so it will NOT pick this up. " +
+                    "Configure the App (or the PAT) to enable autonomous rework.",
                 );
               }
 

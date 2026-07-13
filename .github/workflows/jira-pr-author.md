@@ -71,6 +71,14 @@ tools:
     - "wc*"
 
 safe-outputs:
+  # All safe-output writes are performed with a short-lived GitHub App installation
+  # token (minted per run, auto-revoked). App-authored events are attributed to the
+  # app installation (write access), so they cascade past GitHub's recursion guard
+  # exactly like the old GH_AW_AGENT_TOKEN PAT — without a personal-account coupling.
+  # Consumer repos must configure: vars.CARE_AW_APP_ID + secrets.CARE_AW_APP_PRIVATE_KEY.
+  github-app:
+    app-id: ${{ vars.CARE_AW_APP_ID }}
+    private-key: ${{ secrets.CARE_AW_APP_PRIVATE_KEY }}
   create-pull-request:
     draft: true
     # Born with `jira-agent` so qa-bootstrap-enroll.yml stamps state:needs-qa and the QA machine
@@ -83,7 +91,6 @@ safe-outputs:
     preserve-branch-name: true
     # A run that produces no code change is a real failure for an authoring workflow.
     if-no-changes: "error"
-    github-token: ${{ secrets.GH_AW_AGENT_TOKEN || secrets.GITHUB_TOKEN }}
   missing-data:
 
 steps:
@@ -120,6 +127,7 @@ steps:
         printf '%s\n' "$desc"
       } > /tmp/gh-aw/agent/jira-task.md
       echo "Wrote validated task for $key to /tmp/gh-aw/agent/jira-task.md"
+source: ohcnetwork/care-agentic-workflows/workflows/jira-pr-author.md@main
 ---
 
 # Jira → Draft PR Author (pinned model)
