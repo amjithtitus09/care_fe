@@ -20,6 +20,7 @@ import { FileListTable } from "@/components/Files/FileListTable";
 
 import { PatientHeader } from "@/components/Patient/PatientHeader";
 import { useShortcutSubContext } from "@/context/ShortcutContext";
+import { buildEncounterUrl } from "@/pages/Encounters/utils/utils";
 import { DiagnosticReportResultsTable } from "@/pages/Facility/services/diagnosticReports/components/DiagnosticReportResultsTable";
 import { ObservationHistorySheet } from "@/pages/Facility/services/serviceRequests/components/ObservationHistorySheet";
 import { DIAGNOSTIC_REPORT_STATUS_COLORS } from "@/types/emr/diagnosticReport/diagnosticReport";
@@ -37,7 +38,7 @@ export default function DiagnosticReportView({
   patientId,
   diagnosticReportId,
 }: {
-  facilityId: string;
+  facilityId?: string;
   patientId: string;
   diagnosticReportId: string;
 }) {
@@ -93,7 +94,11 @@ export default function DiagnosticReportView({
           variant="outline"
           onClick={() =>
             navigate(
-              `/facility/${facilityId}/patient/${report.encounter.patient.id}/diagnostic_reports/${diagnosticReportId}/print`,
+              buildEncounterUrl(
+                report.encounter.patient.id,
+                `/diagnostic_reports/${diagnosticReportId}/print`,
+                facilityId,
+              ),
             )
           }
         >
