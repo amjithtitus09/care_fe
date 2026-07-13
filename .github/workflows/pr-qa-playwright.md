@@ -36,7 +36,7 @@ permissions: read-all
 
 engine:
   id: copilot
-  model: claude-opus-4.8
+  model: claude-sonnet-4.5
 
 # The happy path (mark running → log in → seed if needed → navigate → screenshot → upload →
 # comment → labels) fits comfortably here; the cap bounds wall-clock so a single run never
