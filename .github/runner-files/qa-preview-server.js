@@ -78,15 +78,37 @@ function proxy(req, res) {
   req.pipe(upstream);
 }
 
+// QA-env shim, injected into served HTML. This preview runs on an INSECURE http origin
+// (http://host.docker.internal), where Chromium exposes a missing/partial
+// navigator.mediaDevices — so any media-aware code (e.g. a livekit-style plugin calling
+// mediaDevices.addEventListener) crashes pages that work fine on production https. That is
+// an environment defect, not an app defect: feature-detect and fill ONLY the gaps so real
+// browsers are unaffected and real app bugs still surface.
+const QA_ENV_SHIM =
+  "<script>(function(){try{var md=navigator.mediaDevices;" +
+  'if(!md){md={};try{Object.defineProperty(navigator,"mediaDevices",{value:md,configurable:true});}catch(e){}}' +
+  'if(typeof md.addEventListener!=="function"){md.addEventListener=function(){};}' +
+  'if(typeof md.removeEventListener!=="function"){md.removeEventListener=function(){};}' +
+  'if(typeof md.enumerateDevices!=="function"){md.enumerateDevices=function(){return Promise.resolve([]);};}' +
+  'if(typeof md.getUserMedia!=="function"){md.getUserMedia=function(){return Promise.reject(new Error("getUserMedia unavailable in QA env"));};}' +
+  "}catch(e){}})();</script>";
+
 function sendFile(filePath, res) {
   fs.readFile(filePath, (err, buf) => {
     if (err) {
       res.writeHead(404, { "content-type": "text/plain" });
       return res.end("not found");
     }
-    res.writeHead(200, {
-      "content-type": MIME[path.extname(filePath)] || "application/octet-stream",
-    });
+    const type = MIME[path.extname(filePath)] || "application/octet-stream";
+    if (type.startsWith("text/html")) {
+      const html = buf.toString("utf8");
+      const shimmed = html.includes("<head>")
+        ? html.replace("<head>", "<head>" + QA_ENV_SHIM)
+        : QA_ENV_SHIM + html;
+      res.writeHead(200, { "content-type": type });
+      return res.end(shimmed);
+    }
+    res.writeHead(200, { "content-type": type });
     res.end(buf);
   });
 }

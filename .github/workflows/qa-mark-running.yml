@@ -54,6 +54,26 @@ jobs:
             echo "PR #$PR_NUMBER already past the needs-qa window — leaving its state untouched."
             exit 0
           fi
+          # LOUD-FAIL GUARD: the QA workflow is `pull_request`-triggered, so a PR with merge
+          # conflicts has no merge ref and QA silently NEVER DISPATCHES — the PR would sit at
+          # qa-running until the watchdog churns through its retries. Detect that here (this
+          # workflow is pull_request_target and always runs) and escalate immediately with an
+          # actionable comment instead. GitHub computes mergeability lazily; poll briefly and
+          # act only on a definitive CONFLICTING.
+          mergeable="UNKNOWN"
+          for i in 1 2 3 4 5 6; do
+            mergeable="$(gh pr view "$PR_NUMBER" --repo "$REPO" --json mergeable --jq .mergeable)"
+            [ "$mergeable" != "UNKNOWN" ] && break
+            sleep 5
+          done
+          if [ "$mergeable" = "CONFLICTING" ]; then
+            echo "PR #$PR_NUMBER is CONFLICTING — QA cannot dispatch (no merge ref). Escalating."
+            gh pr edit "$PR_NUMBER" --repo "$REPO" \
+              --remove-label 'state:needs-qa' \
+              --add-label 'state:needs-human' || true
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body "⚠️ **QA cannot run: this PR has merge conflicts with its base branch.** The Visual QA workflow dispatches from the merge ref, which GitHub cannot build for a conflicting PR — so QA would never start (silently). Escalated to **state:needs-human**. Resolve the conflicts (merge the base branch into this PR), then re-apply **state:needs-qa** to re-enter QA."
+            exit 0
+          fi
           echo "Marking PR #$PR_NUMBER as state:qa-running."
           # Single edit: drop the entry label (if still present) and add the running marker.
           # gh ignores a remove of a label that the QA activation may have already consumed.
