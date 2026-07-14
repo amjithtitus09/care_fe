@@ -195,6 +195,15 @@ steps:
         exit 0
       fi
       cd ..
+      # Enrich the baseline fixtures with complex graphs the agent's bounded REST seeding
+      # can't express (admin-level config; e.g. a multi-code ActivityDefinition + wired
+      # ServiceRequest for diagnostic-report features). Idempotent and best-effort — a
+      # failure leaves baseline fixtures intact. The log is exposed to the agent.
+      docker compose -f care/docker-compose.local.yaml exec -T backend python manage.py shell \
+        < .github/runner-files/qa-extra-fixtures.py \
+        > /tmp/gh-aw/agent/extra-fixtures.log 2>&1 || \
+        echo "::warning::extra-fixture seeding failed (baseline fixtures unaffected)"
+      grep -h "QA-EXTRA-FIXTURES" /tmp/gh-aw/agent/extra-fixtures.log || true
       # Wait for the API to answer a real login, then persist the fixture JWT.
       for i in $(seq 1 60); do
         code=$(curl -s -o /tmp/gh-aw/agent/auth.json -w '%{http_code}' \
@@ -396,6 +405,10 @@ The fixture credentials below are throwaway test accounts on an ephemeral runner
 - **Backend / fixtures**: a real care backend with loaded fixtures is expected to be running.
   Whether it actually came up is recorded in `/tmp/gh-aw/agent/backend-status.txt` (`up` or
   `down`) — always read it first.
+- **Enriched QA graphs**: the runner also seeds extra, QA-specific object graphs (e.g. an
+  ActivityDefinition titled "QA Multi-Code Lab Panel" with 2 diagnostic report codes plus an
+  active ServiceRequest wired to it). `cat /tmp/gh-aw/agent/extra-fixtures.log` lists what was
+  created **with the exact entity IDs** — read it during Step 3 before hunting through the UI.
 - **Fixture login**: username `admin`, password `admin` (a superuser). The pre-minted token is
   published at `/__qa_auth.json` (used by the Step 2 localStorage login) and on disk at
   `/tmp/gh-aw/agent/auth.json` — read it with `cat` when you need the `access` value for the
