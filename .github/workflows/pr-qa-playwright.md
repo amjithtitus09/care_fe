@@ -43,6 +43,11 @@ engine:
   # and 403s at the steering proxy (opus did — see PR #104/#106 failures 2026-07-13).
   # Authoring stays on opus (jira-pr-author) where deep reasoning actually pays off.
   model: claude-sonnet-4.5
+  # The Copilot CLI has a SECOND permission layer for network commands: url(...) rules
+  # gate shell commands that carry URLs (curl), independently of shell(...) rules. gh-aw
+  # emits no --allow-url flags, so without this every REST-seeding curl is denied even
+  # when shell(curl:*) is allowed. Grant exactly the same-origin preview/API host.
+  args: ["--allow-url", "http://host.docker.internal"]
 
 # Each agent turn = one model request, and gh-aw compiles this into the API proxy's
 # `maxRuns` budget — when the budget is exhausted the proxy refuses the next request with
