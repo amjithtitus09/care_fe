@@ -199,11 +199,15 @@ steps:
       # can't express (admin-level config; e.g. a multi-code ActivityDefinition + wired
       # ServiceRequest for diagnostic-report features). Idempotent and best-effort — a
       # failure leaves baseline fixtures intact. The log is exposed to the agent.
-      docker compose -f care/docker-compose.local.yaml exec -T backend python manage.py shell \
+      # Invoke exactly like the Makefile's load-fixtures target: bare `docker compose exec`
+      # from inside care/. Passing only the local override via -f fails compose validation
+      # ("backend" has no image/build there — those live in the base docker-compose.yaml).
+      (cd care && docker compose exec -T backend python manage.py shell) \
         < .github/runner-files/qa-extra-fixtures.py \
         > /tmp/gh-aw/agent/extra-fixtures.log 2>&1 || \
         echo "::warning::extra-fixture seeding failed (baseline fixtures unaffected)"
-      grep -h "QA-EXTRA-FIXTURES" /tmp/gh-aw/agent/extra-fixtures.log || true
+      grep -h "QA-EXTRA-FIXTURES" /tmp/gh-aw/agent/extra-fixtures.log \
+        || { echo "--- extra-fixtures.log tail ---"; tail -20 /tmp/gh-aw/agent/extra-fixtures.log; }
       # Wait for the API to answer a real login, then persist the fixture JWT.
       for i in $(seq 1 60); do
         code=$(curl -s -o /tmp/gh-aw/agent/auth.json -w '%{http_code}' \
@@ -314,6 +318,7 @@ post-steps:
         tests/uiqa/**
         /tmp/gh-aw/agent/qa-results.json
         /tmp/gh-aw/agent/qa-run.log
+        /tmp/gh-aw/agent/extra-fixtures.log
   - name: Tear down the care backend
     if: always()
     continue-on-error: true
