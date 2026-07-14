@@ -75,40 +75,25 @@ tools:
     # Integrity filtering keeps untrusted-content hardening with no custom token required.
     min-integrity: approved
     toolsets: [pull_requests, repos]
+  # Allowlist form matters: entries must be `<program> *` (program, space, star). gh-aw
+  # compiles that into the CLI rules shell(<program>) + shell(<program>:*), which approve the
+  # program WITH arguments. The previous `cmd*` / multi-word forms (`curl*`, `python3*`,
+  # `npx playwright test*`, `docker compose ... shell*`) compiled to literal tool names that
+  # never match a real invocation — every custom command was silently denied since day one,
+  # which is why agents fell back to playwright-cli + the built-in read-only utilities
+  # (cat/grep/head/ls/... are covered by gh-aw defaults and need no entries here).
   bash:
     - "playwright-cli *"
-    - "git rev-parse*"
-    - "git log*"
-    - "git diff*"
-    - "curl*"
-    - "sleep*"
-    - "mkdir*"
-    - "ls*"
-    - "cat*"
-    - "echo*"
-    - "pwd*"
-    # python3 is the agent's preferred way to assemble JSON/markdown safely; without it
-    # the agent burns turns retrying denied `python3 -c` calls. The arg'd text utilities
-    # let simple inspection commands (head/tail/grep/wc with flags) run without denials.
-    - "python3*"
-    - "head*"
-    - "tail*"
-    - "grep*"
-    - "wc*"
-    # The QA spec runner: the agent authors a focused tests/uiqa spec + minimal config and
-    # runs it with the chromium installed pre-agent. No registry egress — node_modules and
-    # the browser are already on the runner.
-    - "npx playwright test*"
-    - "npx playwright show-report*"
-    # ORM-depth seeding, TIGHTLY scoped: exec ONLY manage.py shell/loaddata/dumpdata inside the
-    # already-running backend container (never bare `docker`, never an arbitrary service). This
-    # lets the agent build complex object graphs the REST API can't easily express — the same
-    # capability the coded suite's *.setup.ts seeders use — without granting general Docker
-    # control on this pull_request_target workflow. Use the exact `-f care/...` prefix below so
-    # the allowlist actually constrains the command.
-    - "docker compose -f care/docker-compose.local.yaml exec -T backend python manage.py shell*"
-    - "docker compose -f care/docker-compose.local.yaml exec -T backend python manage.py loaddata*"
-    - "docker compose -f care/docker-compose.local.yaml exec -T backend python manage.py dumpdata*"
+    # Diff mapping (Step 3) against the local checkout.
+    - "git *"
+    # REST seeding and reachability probes against the same-origin API (Step 3).
+    - "curl *"
+    # Assemble JSON/markdown safely; read the spec runner's JSON verdict (Step 4A).
+    - "python3 *"
+    # The QA spec runner (Step 4A): chromium + node_modules are pre-installed on the runner.
+    - "npx *"
+    - "mkdir *"
+    - "sleep *"
 
 safe-outputs:
   # Writes use the agent PAT so state-label events cascade past GitHub's
@@ -120,14 +105,14 @@ safe-outputs:
     max: 1
   # Drive the state machine. Exactly one state label is added per run (max: 1) and the whole
   # set may be cleared first (remove-labels) so the PR always carries exactly one state:*.
-  # `allowed` entries must be exact names — the full set is enumerated on both sides. The
-  # agent PAT (falls back to GITHUB_TOKEN) is used so the new state label CASCADES to trigger
-  # the next stage workflow — a label written with the default GITHUB_TOKEN is suppressed by
-  # GitHub's recursion guard and would never fire the rework/QA listener.
+  # `allowed` is restricted to the three VERDICT labels: the agent must never re-emit
+  # `state:needs-qa`/`state:qa-running`, which would re-trigger QA and sidestep the
+  # watchdog's bounded retry cap. The agent PAT (falls back to GITHUB_TOKEN) is used so the
+  # new state label CASCADES to trigger the next stage workflow — a label written with the
+  # default GITHUB_TOKEN is suppressed by GitHub's recursion guard and would never fire the
+  # rework/QA listener.
   add-labels:
     allowed:
-      - "state:needs-qa"
-      - "state:qa-running"
       - "state:qa-passed"
       - "state:needs-rework"
       - "state:needs-human"
@@ -370,10 +355,11 @@ program (e.g. `cat`, `git diff`, `head`, `grep`, `wc`, `python3`). Chained one-l
 command at a time. You do **not** need shell to post results: write files with the `write`
 tool and emit results with the safe-output tools.
 
-**Your only jobs that touch the app are through the browser tools (`playwright-cli` browser
-navigation/click/type/snapshot/screenshot) — never through the shell.** You do **not** seed
-data, read tokens, or call the backend API from the shell; the runner already seeded the
-backend before you started (see Step 3).
+**Touch the app through the browser tools (`playwright-cli` navigation/click/type/snapshot/
+screenshot), plus — only for seeding per Step 3 — single `curl` calls against the same-origin
+API.** The runner seeds baseline fixtures before you start; you may top up a missing record via
+REST. There is no docker/ORM/`manage.py` channel in your sandbox — REST is the only seeding
+path.
 
 **NEVER retry a command that was denied or blocked.** If a command returns "Permission denied",
 "could not request permission", or "blocked", that exact form will NEVER succeed on retry —
@@ -396,13 +382,15 @@ The fixture credentials below are throwaway test accounts on an ephemeral runner
 - **Run number**: ${{ github.run_number }}
 - **Preview URL**: http://host.docker.internal/ (PR head, already built and serving)
 - **API**: same origin — the SPA's calls to `http://host.docker.internal/api/...` are
-  reverse-proxied to the care backend. The app calls it for you as you navigate the UI; you do
-  **not** call it directly (no seeding — the runner already loaded fixtures).
+  reverse-proxied to the care backend. The app calls it for you as you navigate the UI; you may
+  also call it directly with single `curl` commands to **seed missing data** (Step 3).
 - **Backend / fixtures**: a real care backend with loaded fixtures is expected to be running.
   Whether it actually came up is recorded in `/tmp/gh-aw/agent/backend-status.txt` (`up` or
   `down`) — always read it first.
-- **Fixture login**: username `admin`, password `admin` (a superuser). A pre-minted token is
-  published at `/__qa_auth.json` for the Step 2 localStorage login only.
+- **Fixture login**: username `admin`, password `admin` (a superuser). The pre-minted token is
+  published at `/__qa_auth.json` (used by the Step 2 localStorage login) and on disk at
+  `/tmp/gh-aw/agent/auth.json` — read it with `cat` when you need the `access` value for the
+  spec runner's login injection or a REST-seeding `Authorization: Bearer` header.
 
 ## Step 0 — Confirm the environment, or escalate / rework
 
@@ -463,7 +451,7 @@ Establish an authenticated session so feature routes render real data:
 5. If you genuinely cannot authenticate after both attempts, treat it as an **infrastructure**
    failure: go to Step 7 with a **`state:needs-human`** verdict (do not blame the PR).
 
-## Step 3 — Map the diff to the exact feature and reach it through the UI
+## Step 3 — Map the diff to the exact feature, and seed data if needed
 
 This is the heart of QA: verify the **specific** surface this PR changes, not a generic path.
 
@@ -482,33 +470,38 @@ This is the heart of QA: verify the **specific** surface this PR changes, not a 
    questionnaire component → the specific questionnaire/encounter screen; a facility settings
    form → that settings tab. Identify the single **primary** surface the PR is most about.
 
-3. **Reach the exact state the PR touches — using ONLY the browser UI.** The backend is
+3. **Reach the exact state the PR touches — through the app's own UI first.** The backend is
    **already seeded** by the runner before you started (fixtures loaded via
-   `manage.py load_fixtures`), and you are logged in through the app. Navigate to the feature
-   using the **app's own UI** — clicks, forms, search, and navigation via `playwright-cli`
-   browser tools. Prefer an existing seeded record; if the app lets you create the record
-   through its own UI as part of exercising the feature, do that.
+   `manage.py load_fixtures`), and you are logged in through the app. Navigate with
+   `playwright-cli` browser tools — clicks, forms, search. Prefer an existing seeded record;
+   if the app can create the record through its own UI as part of exercising the feature, do
+   that.
 
-   **You have NO shell access to seed data, and you do not need it.** Beyond the Step 2 login
-   `browser_evaluate` (the one `fetch('/__qa_auth.json')` call that sets localStorage), do
-   **not** call the backend REST API to create/seed data — no `curl`, no
-   `playwright-cli --raw eval`, no `browser_evaluate` that POSTs to `/api/...`, no `docker`, no
-   `manage.py`. Inside your sandbox those are permission-denied or network-blocked, and
-   retrying them burns your token budget and gets the whole run killed with a provider 403.
-   Ignore any lingering mention of `/tmp/gh-aw/agent/auth.json` for seeding — seeding is the
-   runner's job, not yours.
+4. **If the precise record/state does not exist and the UI cannot create it, seed it via the
+   backend REST API** — you are a superuser on a throwaway fixture backend. Read the token
+   once (`cat /tmp/gh-aw/agent/auth.json`) and copy the `access` value, then create the
+   minimum entity graph with **single, bare `curl` commands** — paste the token literally;
+   variable assignments and `$(...)` are denied by the sandbox:
 
-4. **If the precise record the PR changes is not present in the seeded data**, do NOT attempt to
-   create it via API/ORM/shell. Instead, screenshot the **closest real surface of the same
-   feature** — the list/index the component renders, the empty-state, or the nearest reachable
-   screen — and note in your findings that the exact record wasn't in the fixtures. A durable
-   screenshot of the real (if adjacent) surface still satisfies the hard screenshot gate; a
-   seeding attempt that loops does not.
+   ```bash
+   curl -s -X POST http://host.docker.internal/api/v1/<resource>/ -H "Authorization: Bearer <paste-access-value>" -H "Content-Type: application/json" -d '{"name": "..."}'
+   ```
 
-5. If after a reasonable effort you still cannot construct the state, screenshot the closest
-   real surface of the *same feature* (its list, empty state, or form) and say so in the
-   comment — that is still the real feature UI, and the exhaustive data-specific E2E is owned
-   by the coded suite `playwright.yaml`. Never fall back to a login page or an unrelated route.
+   Discover the right endpoint and payload from the changed code and the app's own route/type
+   files (`src/types/**/*Api.ts` — read them with `cat`/`grep`). Keep seeding **minimal,
+   bounded, and idempotent**: GET-check before you create, create only what the feature needs
+   to render, spend at most ~6 API calls total, and never run destructive or bulk operations.
+   If the same call fails twice for the same reason, stop seeding and use the fallback below —
+   never loop on a failing request. (There is no shell/ORM/docker seeding path in your
+   sandbox; REST is the only channel.)
+
+5. **Fallback — the closest real surface.** If after those bounded attempts you still cannot
+   construct the state, screenshot the **closest real surface of the same feature** (its
+   list/index, empty state, or form) and state exactly what was missing in your findings —
+   that is still the real feature UI, and the exhaustive data-specific E2E is owned by the
+   coded suite `playwright.yaml`. A durable screenshot of the real (if adjacent) surface still
+   satisfies the hard screenshot gate; a seeding attempt that loops does not. Never fall back
+   to a login page or an unrelated route.
 
 ## Step 4 — Exercise and capture before/after screenshots (desktop AND mobile — both mandatory)
 
@@ -726,7 +719,7 @@ routes + assertions you checked instead.
 </details>
 
 ### What this run verified
-- ✅ <e.g. ran the focused spec (or interactive fallback) · seeded the missing record via REST/ORM · new field renders · assertion green · console clean>
+- ✅ <e.g. ran the focused spec (or interactive fallback) · seeded the missing record via REST · new field renders · assertion green · console clean>
 - ⏭️ Not verified here: <anything still out of reach and why>
 
 ### Findings
@@ -738,7 +731,7 @@ routes + assertions you checked instead.
 Then advance the state machine. Emit `remove_labels` for `state:qa-running` and `add_labels`
 for **exactly one** of the following (the `add-labels` safe output enforces max 1):
 
-- **🟢 Pass** (feature verified, ≥1 published screenshot, no Critical) → `add_labels`
+- **🟢 Pass** (feature verified, published desktop AND mobile screenshots, no Critical) → `add_labels`
   `state:qa-passed`. This is terminal; a human will merge. Call `jira_report` with
   `status: qa-passed` and `screenshot_url` set to the primary feature screenshot.
 - **🔴 Critical defect** (you have a screenshot or a proven build failure, and concrete
