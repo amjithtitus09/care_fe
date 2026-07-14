@@ -44,10 +44,14 @@ engine:
   # Authoring stays on opus (jira-pr-author) where deep reasoning actually pays off.
   model: claude-sonnet-4.5
 
-# The happy path (mark running → log in → seed if needed → navigate → screenshot → upload →
-# comment → labels) fits comfortably here; the cap bounds wall-clock so a single run never
-# approaches the model-provider token TTL.
-max-turns: 45
+# Each agent turn = one model request, and gh-aw compiles this into the API proxy's
+# `maxRuns` budget — when the budget is exhausted the proxy refuses the next request with
+# an HTTP 403 that the CLI misreports as "Authentication failed with provider" (root cause
+# of the 2026-06/07 "reproducible 403" QA failures: runs died on request #45 mid-QA).
+# Real full-QA runs (login → map diff → navigate → spec → two viewports → upload → comment)
+# need well over 45 requests; 120 gives honest headroom while `timeout-minutes` and the
+# proxy's AI-credit cap still bound cost (observed ~2.1 AIC/turn ⇒ ~260 AIC worst case).
+max-turns: 120
 
 timeout-minutes: 55
 
