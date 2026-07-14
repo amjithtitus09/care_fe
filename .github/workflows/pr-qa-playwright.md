@@ -10,8 +10,9 @@ description: >
   screenshots which it publishes with upload-asset. Durable screenshots are a HARD GATE:
   with no verified screenshot the PR can never reach state:qa-passed. A clean pass advances
   to state:qa-passed; an observed UI defect advances to state:needs-rework (with findings the
-  fixer can act on); an infrastructure failure that is not the PR's fault escalates to
-  state:needs-human. The backend is always torn down. Reports the QA outcome back to the
+  fixer can act on); an infrastructure failure or an
+  un-constructable data state that is not the PR's fault escalates to state:needs-human —
+  never a verdict from adjacent-surface evidence. The backend is always torn down. Reports the QA outcome back to the
   linked JIRA issue.
 
 # Stage trigger: fire when `state:needs-qa` is applied to a PR. gh-aw auto-removes the
@@ -343,9 +344,11 @@ Your three possible outcomes (pick exactly one, see Step 7):
   mobile screenshots and found no critical defect.
 - **`state:needs-rework`** — you observed a UI/functional defect *caused by the PR* (including
   a PR build failure), and you have a screenshot and concrete findings the fixer can act on.
-- **`state:needs-human`** — an **infrastructure** failure that is **not the PR's fault** made
-  verification impossible (backend never came up, preview server unreachable, the sandbox
-  browser cannot reach the runner at all). You escalate instead of blaming the PR.
+- **`state:needs-human`** — verification was impossible for a reason that is **not the PR's
+  fault**: an **infrastructure** failure (backend never came up, preview server unreachable,
+  the sandbox browser cannot reach the runner), or the **exact data state the PR changes could
+  not be constructed** through the UI or bounded REST seeding (Step 3). You escalate with an
+  actionable report instead of blaming the PR — or passing it on adjacent evidence.
 
 ## You cannot build anything yourself
 
@@ -369,8 +372,9 @@ path.
 **NEVER retry a command that was denied or blocked.** If a command returns "Permission denied",
 "could not request permission", or "blocked", that exact form will NEVER succeed on retry —
 repeating it only burns your token budget and will eventually get the whole run killed with a
-provider 403. On the FIRST denial, do not repeat it: switch to a bare allowed command, or fall
-back to screenshotting the closest real surface per Step 4. Do not loop.
+provider 403. On the FIRST denial, do not repeat it: switch to a bare allowed command or a
+different approach; if the needed state is genuinely unreachable, escalate per Step 3. Do not
+loop.
 
 ## Security
 
@@ -496,17 +500,17 @@ This is the heart of QA: verify the **specific** surface this PR changes, not a 
    files (`src/types/**/*Api.ts` — read them with `cat`/`grep`). Keep seeding **minimal,
    bounded, and idempotent**: GET-check before you create, create only what the feature needs
    to render, spend at most ~6 API calls total, and never run destructive or bulk operations.
-   If the same call fails twice for the same reason, stop seeding and use the fallback below —
+   If the same call fails twice for the same reason, stop seeding and escalate per point 5 —
    never loop on a failing request. (There is no shell/ORM/docker seeding path in your
    sandbox; REST is the only channel.)
 
-5. **Fallback — the closest real surface.** If after those bounded attempts you still cannot
-   construct the state, screenshot the **closest real surface of the same feature** (its
-   list/index, empty state, or form) and state exactly what was missing in your findings —
-   that is still the real feature UI, and the exhaustive data-specific E2E is owned by the
-   coded suite `playwright.yaml`. A durable screenshot of the real (if adjacent) surface still
-   satisfies the hard screenshot gate; a seeding attempt that loops does not. Never fall back
-   to a login page or an unrelated route.
+5. **No fallback — escalate honestly.** If after those bounded attempts you still cannot
+   construct the exact state the PR changes, do NOT substitute a screenshot of an adjacent
+   surface (a list page, an empty state, a form) and call it evidence — verifying a nearby
+   screen instead of the changed feature is not QA and must never influence a verdict. Go to
+   Step 7 with **`state:needs-human`** and make the comment actionable: name the exact
+   record/state you could not construct, every UI path and API endpoint you tried, and what
+   fixture or endpoint would unblock a re-run. That report is the run's deliverable.
 
 ## Step 4 — Exercise and capture before/after screenshots (desktop AND mobile — both mandatory)
 
@@ -742,9 +746,10 @@ for **exactly one** of the following (the `add-labels` safe output enforces max 
 - **🔴 Critical defect** (you have a screenshot or a proven build failure, and concrete
   findings) → `add_labels` `state:needs-rework`. The rework workflow will pick it up. Call
   `jira_report` with `status: qa-failed` and a `screenshot_url` when you have one.
-- **🟠 Infrastructure failure** (backend down, browser unreachable, auth impossible — not the
-  PR's fault) → `add_labels` `state:needs-human`. This is terminal; a human will take over.
-  Call `jira_report` with `status: qa-failed`.
+- **🟠 Needs human** (not the PR's fault: backend down, browser unreachable, auth impossible,
+  or the exact feature state could not be constructed after bounded seeding) → `add_labels`
+  `state:needs-human` with an actionable report of what was missing/tried. This is terminal; a
+  human will take over. Call `jira_report` with `status: qa-failed`.
 
 Be truthful: never describe a login-screen fallback as if the feature was verified, and never
 emit `state:qa-passed` without a published screenshot of the changed feature.
