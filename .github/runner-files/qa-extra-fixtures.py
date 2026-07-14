@@ -25,7 +25,10 @@ try:
     ServiceRequest = apps.get_model("emr", "ServiceRequest")
     Encounter = apps.get_model("emr", "Encounter")
 
-    SLUG = "qa-multi-diag-panel"
+    # care stores facility-scoped slugs fully qualified: f-<facility_uuid>-<value>
+    # (SlugBaseModel.calculate_slug / parse_slug). A bare value 500s at retrieval with
+    # ValueError("Invalid slug") when serializers parse it back.
+    SLUG_VALUE = "qa-multi-diag-panel"
     TITLE = "QA Multi-Code Lab Panel"
     CODES = [
         {
@@ -45,7 +48,8 @@ try:
         log("WARN no encounter in fixtures; skipping ENG-503 graph")
     else:
         facility = encounter.facility
-        ad = ActivityDefinition.objects.filter(slug=SLUG, facility=facility).first()
+        full_slug = f"f-{facility.external_id}-{SLUG_VALUE}"
+        ad = ActivityDefinition.objects.filter(slug=full_slug, facility=facility).first()
         if ad is None:
             template = ActivityDefinition.objects.filter(facility=facility).first()
             if template is None:
@@ -69,17 +73,17 @@ try:
                     usage="QA",
                     kind="service_request",
                 )
-            ad.slug = SLUG
+            ad.slug = full_slug
             ad.title = TITLE
             ad.diagnostic_report_codes = CODES
             ad.latest = True
             ad.save()
-            log(f"created ActivityDefinition '{TITLE}' slug={SLUG}")
+            log(f"created ActivityDefinition '{TITLE}' slug={full_slug}")
         else:
             if not ad.diagnostic_report_codes or len(ad.diagnostic_report_codes) < 2:
                 ad.diagnostic_report_codes = CODES
                 ad.save(update_fields=["diagnostic_report_codes"])
-            log(f"ActivityDefinition slug={SLUG} already present")
+            log(f"ActivityDefinition slug={full_slug} already present")
 
         sr = ServiceRequest.objects.filter(
             activity_definition=ad, status="active"
