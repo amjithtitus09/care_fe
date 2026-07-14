@@ -33,10 +33,15 @@ export const useMediaStream = ({
   }, []);
 
   useEffect(() => {
-    navigator.mediaDevices.addEventListener("devicechange", updateDevices);
+    const mediaDevices = navigator.mediaDevices;
+    if (typeof mediaDevices?.addEventListener !== "function") {
+      return;
+    }
+
+    mediaDevices.addEventListener("devicechange", updateDevices);
 
     return () => {
-      navigator.mediaDevices.removeEventListener("devicechange", updateDevices);
+      mediaDevices.removeEventListener("devicechange", updateDevices);
     };
   }, [updateDevices]);
 
