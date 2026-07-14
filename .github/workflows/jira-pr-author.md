@@ -86,6 +86,20 @@ safe-outputs:
     preserve-branch-name: true
     # A run that produces no code change is a real failure for an authoring workflow.
     if-no-changes: "error"
+  # Re-dispatch idempotency (prompt Step 0): when the ticket already has an open PR, the agent
+  # re-enters THAT PR into QA instead of authoring a duplicate. target: "*" lets these address
+  # the existing PR by number (this workflow is repository_dispatch — no triggering item). The
+  # agent PAT above makes the needs-qa label event cascade to the QA machine.
+  add-labels:
+    allowed: ["state:needs-qa"]
+    target: "*"
+    max: 1
+  remove-labels:
+    allowed: ["state:qa-running", "state:qa-passed", "state:needs-rework", "state:needs-human"]
+    target: "*"
+  add-comment:
+    target: "*"
+    max: 1
   missing-data:
 
 steps:
@@ -122,6 +136,20 @@ steps:
         printf '%s\n' "$desc"
       } > /tmp/gh-aw/agent/jira-task.md
       echo "Wrote validated task for $key to /tmp/gh-aw/agent/jira-task.md"
+      printf '%s' "$key" > /tmp/gh-aw/agent/issue-key.txt
+  - name: Idempotency guard — detect an already-open PR for this ticket (read-only)
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    run: |
+      set -euo pipefail
+      key="$(cat /tmp/gh-aw/agent/issue-key.txt)"
+      echo "none" > /tmp/gh-aw/agent/existing-pr.txt
+      pr="$(gh pr list --repo "$REPO" --state open --head "jira/${key}" --json number --jq '.[0].number // empty' || true)"
+      if [ -n "$pr" ]; then
+        echo "Open PR #$pr already exists for jira/${key} — the agent will re-enter it into QA instead of re-authoring."
+        printf '%s' "$pr" > /tmp/gh-aw/agent/existing-pr.txt
+      fi
 source: amjithtitus09/care-agentic-workflows/workflows/jira-pr-author.md@main
 ---
 
@@ -147,7 +175,17 @@ to you. Specifically:
 
 ## The task
 
-Your task specification has already been **validated and sanitized** by a pre-step and written to
+**Step 0 — check for an existing PR first.** Run `cat /tmp/gh-aw/agent/existing-pr.txt`. If it
+contains a PR number (anything other than `none`), this ticket **already has an open draft PR**:
+do **not** author anything, do not touch the repo, do not call `create_pull_request`. Instead
+re-enter that PR into Visual QA and stop, using exactly these safe outputs against that PR
+number: (1) `remove_labels` for all of `state:qa-running`, `state:qa-passed`,
+`state:needs-rework`, `state:needs-human`; (2) `add_labels` with `state:needs-qa`; (3) one
+`add_comment` — "🔁 Jira re-dispatch for <issue_key> detected while PR #<n> is open — re-entered
+it into Visual QA (state:needs-qa) instead of authoring a duplicate." Then stop.
+
+Otherwise (`none`): your task specification has already been **validated and sanitized** by a
+pre-step and written to
 `/tmp/gh-aw/agent/jira-task.md`. **Read that file first** (e.g. `cat /tmp/gh-aw/agent/jira-task.md`).
 It contains:
 
