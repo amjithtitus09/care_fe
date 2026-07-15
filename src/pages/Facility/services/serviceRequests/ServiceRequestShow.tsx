@@ -267,6 +267,12 @@ export default function ServiceRequestShow({
     activityDefinition.observation_result_requirements ?? [];
   const diagnosticReports = request.diagnostic_reports || [];
 
+  const reportCodes = activityDefinition.diagnostic_report_codes ?? [];
+  const hasUnusedReportCodes = reportCodes.some(
+    (code) =>
+      !diagnosticReports.some((report) => report.code?.code === code.code),
+  );
+
   const assignedSpecimenIds = new Set<string>();
 
   const preparePrintAllQRCodes = async () => {
@@ -597,6 +603,7 @@ export default function ServiceRequestShow({
               </div>
             )}
             {(!diagnosticReports.length ||
+              hasUnusedReportCodes ||
               diagnosticReports[0]?.status !==
                 DiagnosticReportStatus.final) && (
               <DiagnosticReportForm
