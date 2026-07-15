@@ -76,13 +76,23 @@ try:
             ad.slug = full_slug
             ad.title = TITLE
             ad.diagnostic_report_codes = CODES
+            # No specimen prerequisite: the frontend enables "Create Report" when
+            # specimen_requirements is empty OR a specimen is collected. Empty keeps the
+            # QA focus on the multi-code report flow itself, not specimen collection.
+            ad.specimen_requirements = []
             ad.latest = True
             ad.save()
             log(f"created ActivityDefinition '{TITLE}' slug={full_slug}")
         else:
+            changed = False
             if not ad.diagnostic_report_codes or len(ad.diagnostic_report_codes) < 2:
                 ad.diagnostic_report_codes = CODES
-                ad.save(update_fields=["diagnostic_report_codes"])
+                changed = True
+            if ad.specimen_requirements:
+                ad.specimen_requirements = []
+                changed = True
+            if changed:
+                ad.save(update_fields=["diagnostic_report_codes", "specimen_requirements"])
             log(f"ActivityDefinition slug={full_slug} already present")
 
         sr = ServiceRequest.objects.filter(

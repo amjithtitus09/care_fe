@@ -208,6 +208,22 @@ steps:
         echo "::warning::extra-fixture seeding failed (baseline fixtures unaffected)"
       grep -h "QA-EXTRA-FIXTURES" /tmp/gh-aw/agent/extra-fixtures.log \
         || { echo "--- extra-fixtures.log tail ---"; tail -20 /tmp/gh-aw/agent/extra-fixtures.log; }
+      # Per-PR seed scripts carried on the branch under .github/qa-seeds/*.py (Tier 2): the
+      # feature author (or a promoted derived-seed.py) ships the exact data graph the feature
+      # needs. Run each after the shared graph, appending stage-marked sections to the manifest.
+      # FORK GUARD: PR-supplied code must not run for cross-repo (fork) PRs — only same-repo.
+      if [ "${{ github.event.pull_request.head.repo.full_name }}" = "${{ github.repository }}" ]; then
+        for seed in .github/qa-seeds/*.py; do
+          [ -f "$seed" ] || continue
+          echo "=== stage: branch:$seed ===" >> /tmp/gh-aw/agent/extra-fixtures.log
+          (cd care && docker compose exec -T backend python manage.py shell) \
+            < "$seed" >> /tmp/gh-aw/agent/extra-fixtures.log 2>&1 \
+            || echo "::warning::branch seed $seed failed (baseline + shared fixtures unaffected)"
+        done
+      else
+        echo "=== per-branch qa-seeds skipped: fork PR (head repo != base repo) ===" \
+          >> /tmp/gh-aw/agent/extra-fixtures.log
+      fi
       # Wait for the API to answer a real login, then persist the fixture JWT.
       for i in $(seq 1 60); do
         code=$(curl -s -o /tmp/gh-aw/agent/auth.json -w '%{http_code}' \
@@ -259,7 +275,7 @@ steps:
       fi
       # Serve the SPA + reverse-proxy /api to the backend on :9000 (privileged port → sudo).
       SERVER_JS="$GITHUB_WORKSPACE/.github/runner-files/qa-preview-server.js"
-      sudo -E env "PATH=$PATH" QA_BUILD_DIR="$GITHUB_WORKSPACE/build" QA_PORT=80 QA_BACKEND_PORT=9000 \
+      sudo -E env "PATH=$PATH" QA_BUILD_DIR="$GITHUB_WORKSPACE/build" QA_PORT=80 QA_BACKEND_PORT=9000 QA_CARE_DIR="$GITHUB_WORKSPACE/care" \
         nohup node "$SERVER_JS" > /tmp/gh-aw/agent/preview.log 2>&1 &
       echo "Waiting for the preview server on http://localhost:80 ..."
       for i in $(seq 1 60); do
@@ -404,6 +420,10 @@ The fixture credentials below are throwaway test accounts on an ephemeral runner
 - **PR head**: ${{ github.event.pull_request.head.sha }}
 - **Run number**: ${{ github.run_number }}
 - **Preview URL**: http://host.docker.internal/ (PR head, already built and serving)
+- **Seed bridge**: `POST http://host.docker.internal/__qa_seed` with a Python script body runs
+  it in the backend container (`manage.py shell`) and returns its output + a `QA-SEED-EXIT: <n>`
+  line — full ORM depth for graphs REST can't express (see Step 3). Ephemeral fixture backend on
+  a throwaway runner; same trust domain as your superuser REST token.
 - **API**: same origin — the SPA's calls to `http://host.docker.internal/api/...` are
   reverse-proxied to the care backend. The app calls it for you as you navigate the UI; you may
   also call it directly with single `curl` commands to **seed missing data** (Step 3).
@@ -496,38 +516,53 @@ This is the heart of QA: verify the **specific** surface this PR changes, not a 
    questionnaire component → the specific questionnaire/encounter screen; a facility settings
    form → that settings tab. Identify the single **primary** surface the PR is most about.
 
-3. **Reach the exact state the PR touches — through the app's own UI first.** The backend is
-   **already seeded** by the runner before you started (fixtures loaded via
-   `manage.py load_fixtures`), and you are logged in through the app. Navigate with
+3. **Reach the exact state the PR touches — through the app's own UI first.** The runner has
+   **already seeded** the backend before you started (baseline `manage.py load_fixtures` plus
+   QA-specific graphs — `cat /tmp/gh-aw/agent/extra-fixtures.log` for entity IDs already created
+   for this feature), and you are logged in through the app. Navigate with
    `playwright-cli` browser tools — clicks, forms, search. Prefer an existing seeded record;
    if the app can create the record through its own UI as part of exercising the feature, do
    that.
 
-4. **If the precise record/state does not exist and the UI cannot create it, seed it via the
-   backend REST API** — you are a superuser on a throwaway fixture backend. Read the token
-   once (`cat /tmp/gh-aw/agent/auth.json`) and copy the `access` value, then create the
-   minimum entity graph with **single, bare `curl` commands** — paste the token literally;
-   variable assignments and `$(...)` are denied by the sandbox:
+4. **If the precise record/state does not exist and the UI cannot create it, seed it — REST
+   first, then the ORM bridge.** You are a superuser on a throwaway fixture backend.
+   - **REST** for simple, app-valid records. Read the token once
+     (`cat /tmp/gh-aw/agent/auth.json`), copy the `access` value, and POST with **single, bare
+     `curl` commands** (paste the token literally; command substitution and variable assignments
+     are denied):
 
-   ```bash
-   curl -s -X POST http://host.docker.internal/api/v1/<resource>/ -H "Authorization: Bearer <paste-access-value>" -H "Content-Type: application/json" -d '{"name": "..."}'
-   ```
+     ```bash
+     curl -s -X POST http://host.docker.internal/api/v1/<resource>/ -H "Authorization: Bearer <paste-access>" -H "Content-Type: application/json" -d '{"name": "..."}'
+     ```
 
-   Discover the right endpoint and payload from the changed code and the app's own route/type
-   files (`src/types/**/*Api.ts` — read them with `cat`/`grep`). Keep seeding **minimal,
-   bounded, and idempotent**: GET-check before you create, create only what the feature needs
-   to render, spend at most ~6 API calls total, and never run destructive or bulk operations.
-   If the same call fails twice for the same reason, stop seeding and escalate per point 5 —
-   never loop on a failing request. (There is no shell/ORM/docker seeding path in your
-   sandbox; REST is the only channel.)
+   - **ORM bridge** (`POST /__qa_seed`) when REST cannot express the graph — required fields,
+     valueset validation, or multi-model/multi-stage state (e.g. an ActivityDefinition with two
+     diagnostic codes + a ServiceRequest + a *collected* Specimen). It runs a Python script
+     **inside the backend container** with full Django ORM depth. Write the script to a file
+     first (the `write` tool), then submit it:
+
+     ```bash
+     curl -s -X POST http://host.docker.internal/__qa_seed --data-binary @/tmp/gh-aw/agent/derived-seed.py
+     ```
+
+     The response echoes the script output and ends with `QA-SEED-EXIT: <code>` (0 = success).
+     Seed-script conventions: **idempotent** (look up before create), minimal, `print()` the
+     `external_id`s you create so you can navigate to them, fully-qualified facility-scoped slugs
+     (`f-<facility_external_id>-<value>`). Discover model/field names from the changed backend
+     code or `care/**/models.py` (read with `cat`/`grep`). A good `derived-seed.py` persists in
+     the run artifact and can be promoted to `.github/qa-seeds/<KEY>.py` so future runs replay it.
+
+   Keep all seeding **minimal, bounded, and idempotent**. If the same call fails twice for the
+   same reason, stop and escalate per point 5 — never loop on a failing request.
 
 5. **No fallback — escalate honestly.** If after those bounded attempts you still cannot
    construct the exact state the PR changes, do NOT substitute a screenshot of an adjacent
    surface (a list page, an empty state, a form) and call it evidence — verifying a nearby
    screen instead of the changed feature is not QA and must never influence a verdict. Go to
-   Step 7 with **`state:needs-human`** and make the comment actionable: name the exact
-   record/state you could not construct, every UI path and API endpoint you tried, and what
-   fixture or endpoint would unblock a re-run. That report is the run's deliverable.
+   Step 7 with **`state:needs-human`** and make the comment actionable using this exact shape so
+   a human (or the next dev) can turn it into a seed script — `missing: <model> in state <state>
+   wired to <parent>; tried: <UI paths / REST / ORM>; unblock: <fixture or endpoint>`. That
+   structured report is the run's deliverable.
 
 ## Step 4 — Exercise and capture before/after screenshots (desktop AND mobile — both mandatory)
 
@@ -768,9 +803,16 @@ routes + assertions you checked instead.
 Then advance the state machine. Emit `remove_labels` for `state:qa-running` and `add_labels`
 for **exactly one** of the following (the `add-labels` safe output enforces max 1):
 
-- **🟢 Pass** (feature verified, published desktop AND mobile screenshots, no Critical) → `add_labels`
-  `state:qa-passed`. This is terminal; a human will merge. Call `jira_report` with
-  `status: qa-passed` and `screenshot_url` set to the primary feature screenshot.
+- **🟢 Pass** → `add_labels` `state:qa-passed`. Requires ALL of: the changed feature verified,
+  published desktop AND mobile screenshots, and no Critical. **For a create / add-N feature the
+  pass gate is the rendered OUTCOME, not the entry point** — e.g. for "create multiple diagnostic
+  reports" you must have actually created the reports and shot the resulting state (≥2 reports /
+  the "Created" markers), NOT merely opened the selector dropdown. Completing a prerequisite form
+  (collect a specimen, enter a value) via the UI or a Step-3 seed is part of the job; if the
+  outcome is genuinely unreachable after bounded seeding, this is **not** a pass — escalate to
+  `state:needs-human` (point below) with the structured data-gap report. This is terminal; a
+  human will merge. Call `jira_report` with `status: qa-passed` and `screenshot_url` set to the
+  primary outcome screenshot.
 - **🔴 Critical defect** (you have a screenshot or a proven build failure, and concrete
   findings) → `add_labels` `state:needs-rework`. The rework workflow will pick it up. Call
   `jira_report` with `status: qa-failed` and a `screenshot_url` when you have one.
